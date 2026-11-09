@@ -55,9 +55,9 @@ The publishable key is meant to be public; row level security limits each signed
 
 ## Deploying to GitHub Pages
 
-1. Make the repo public and set Pages to "GitHub Actions" under Settings > Pages.
-2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as repository variables (Settings > Secrets and variables > Actions > Variables).
-3. Run the "Deploy to GitHub Pages" workflow from the Actions tab.
+The app is live at https://chandlerbrtek.github.io/pillar-town/ and deploys automatically on every push to `main`.
+
+Setup, already done: Pages is set to "GitHub Actions" under Settings > Pages, and `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are repository variables (Settings > Secrets and variables > Actions > Variables). The "Deploy to GitHub Pages" workflow can also be run by hand from the Actions tab.
 
 ## How the town works
 
