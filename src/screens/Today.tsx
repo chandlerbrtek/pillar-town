@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { addDays, today, weekStart } from '../dates';
 import { PILLAR_INFO } from '../pillars';
-import { BUILDING_NAMES, PillarSprite } from '../sprites';
+import { BUILDING_NAMES } from '../iso/buildings';
+import { PillarIcon } from '../iso/IsoIcon';
 import { deriveTown, variantFor } from '../town';
 import { useToast } from '../Toast';
 import { PILLARS, type AppData, type Habit } from '../types';
@@ -26,7 +27,7 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
     toast({
       content: (
         <>
-          <PillarSprite pillar={habit.pillar} variant={variantFor(entry.id)} size={28} />
+          <PillarIcon pillar={habit.pillar} variant={variantFor(entry.id)} size={32} />
           <span>{BUILDING_NAMES[habit.pillar]} placed!</span>
         </>
       ),
@@ -68,7 +69,7 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
             const info = PILLAR_INFO[p];
             return (
               <li key={p}>
-                <PillarSprite pillar={p} size={22} />
+                <PillarIcon pillar={p} size={26} />
                 <span className="balance-name">{info.name}</span>
                 <span className="bar" aria-hidden>
                   <span style={{ width: `${pct * 100}%`, background: info.color }} />

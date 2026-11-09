@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sprite } from '../sprites';
+import { IsoIcon } from '../iso/IsoIcon';
 import { supabase } from '../supabaseStore';
 
 /** Email and password sign-in, used only when Supabase is configured. */
@@ -38,9 +38,9 @@ export function Login() {
       <main className="content center-screen">
         <section className="panel login">
           <div className="login-art">
-            <Sprite name="bond" accent="#c8553d" size={48} />
-            <Sprite name="vitality" accent="#5a9e4b" size={48} />
-            <Sprite name="mind" accent="#4f7cc9" size={48} />
+            <IsoIcon item={{ kind: 'bond', variant: 0 }} size={56} />
+            <IsoIcon item={{ kind: 'vitality', variant: 0 }} size={56} />
+            <IsoIcon item={{ kind: 'mind', variant: 0 }} size={56} />
           </div>
           <h1>PillarTown</h1>
           <form onSubmit={submit} className="stack">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { today, weekStart } from '../dates';
 import { PILLAR_INFO } from '../pillars';
-import { PillarSprite } from '../sprites';
+import { PillarIcon } from '../iso/IsoIcon';
 import { supabase } from '../supabaseStore';
 import { targetFor } from '../town';
 import { PILLARS, type AppData, type Habit, type Pillar } from '../types';
@@ -37,7 +37,7 @@ export function Habits({ data, actions, storeKind, account }: Props) {
             const t = targetFor(data.targets, p, week);
             return (
               <li key={p}>
-                <PillarSprite pillar={p} size={22} />
+                <PillarIcon pillar={p} size={26} />
                 <span className="balance-name">{PILLAR_INFO[p].name}</span>
                 <div className="stepper">
                   <button onClick={() => actions.setTarget(p, Math.max(0, t - 1))} aria-label={`Lower ${PILLAR_INFO[p].name} target`}>

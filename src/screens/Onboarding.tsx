@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PILLAR_INFO, STARTER_HABITS } from '../pillars';
-import { PillarSprite } from '../sprites';
+import { PillarIcon } from '../iso/IsoIcon';
 import { PILLARS, type Pillar } from '../types';
 
 interface Props {
@@ -49,7 +49,7 @@ export function Onboarding({ onStart }: Props) {
         {PILLARS.map((p) => (
           <div key={p} className="onboard-pillar">
             <div className="pillar-label">
-              <PillarSprite pillar={p} size={28} />
+              <PillarIcon pillar={p} size={34} />
               <div>
                 <strong style={{ color: PILLAR_INFO[p].color }}>{PILLAR_INFO[p].name}</strong>
                 <div className="tiny muted">
