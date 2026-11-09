@@ -10,7 +10,7 @@ Full design: [PillarTown — Design Doc](https://claude.ai/artifact/LV5D8wB3AnQ5
 - **One habit, one building.** Logging a habit places something in the town right away.
 - **Weekly neighborhoods.** Each week becomes one block of the town. After a year, the map is a picture of the year.
 - **Balance first.** The town only grows a stage when all 8 districts are ready. Each pillar has its own weekly target, and the most neglected pillar earns double progress.
-- **Mild consequences.** A skipped habit leaves a wilted spot. Going past a pillar's target in a later week restores it.
+- **Seeds and yards.** Habits and streaks earn seeds, which decorate each week's yard.
 
 | Pillar | Builds | Example habits |
 | --- | --- | --- |
@@ -61,9 +61,11 @@ Setup, already done: Pages is set to "GitHub Actions" under Settings > Pages, an
 
 ## How the town works
 
-Nothing about the town is stored. Buildings come from logs, and wilted spots come from missed weekly targets, all worked out in [`src/town.ts`](src/town.ts):
+Nothing about the town is stored except yard decorations. Buildings, lamps, fountains, streaks and seeds earned are all worked out from your logs in [`src/town.ts`](src/town.ts):
 
-- When a week ends, each pillar's shortfall (target minus logged) becomes wilted spots.
-- Logging past a pillar's target in a later week restores that pillar's oldest wilted spots, one per extra habit.
-- The first week doesn't wilt if it started mid-week.
-- A week where every target is met is a full week and gets a fountain.
+- Each day is a 3x3 block with a lot per pillar. 1, 2 and 3+ habits in a pillar build and upgrade its building; 5+ pillars light the day's lamp.
+- Each week is an island of seven day blocks around a plaza (a fountain on a full week) and a yard.
+- Habits earn seeds: 1 per habit, +1 per new building, +5 per lit lamp, +25 per full week, and bonuses when a pillar streak reaches 7, 30 or 100 days.
+- Seeds buy decorations for the current week's yard. Decorations stay with the week they were placed in; removing one refunds it.
+
+If you set up Supabase before yards existed, run [`supabase/migrations/002_yard_items.sql`](supabase/migrations/002_yard_items.sql) once in the SQL editor.

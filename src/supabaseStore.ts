@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Store } from './store';
-import type { AppData, Habit, Log, Pillar, TargetRow } from './types';
+import type { AppData, Habit, Log, Pillar, TargetRow, YardItem } from './types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -23,11 +23,12 @@ export class SupabaseStore implements Store {
   ) {}
 
   async load(): Promise<AppData> {
-    const [settings, habits, logs, targets] = await Promise.all([
+    const [settings, habits, logs, targets, yard] = await Promise.all([
       this.db.from('settings').select('started_on').maybeSingle(),
       this.db.from('habits').select('*').order('created_at'),
       this.db.from('logs').select('*').order('created_at'),
       this.db.from('targets').select('*'),
+      this.db.from('yard_items').select('*').order('created_at'),
     ]);
     return {
       startedOn: check(settings)?.started_on ?? null,
@@ -49,6 +50,15 @@ export class SupabaseStore implements Store {
         pillar: t.pillar as Pillar,
         weekStart: t.week_start,
         target: t.target,
+      })),
+      // The yard table was added later; if it doesn't exist yet the town still loads, with empty yards.
+      yard: (yard.error ? [] : (yard.data ?? [])).map((y) => ({
+        id: y.id,
+        weekStart: y.week_start,
+        cell: y.cell,
+        decor: y.decor,
+        price: y.price,
+        createdAt: y.created_at,
       })),
     };
   }
@@ -87,6 +97,24 @@ export class SupabaseStore implements Store {
 
   async deleteLog(id: string) {
     check(await this.db.from('logs').delete().eq('id', id));
+  }
+
+  async addYardItem(item: YardItem) {
+    check(
+      await this.db.from('yard_items').insert({
+        id: item.id,
+        user_id: this.userId,
+        week_start: item.weekStart,
+        cell: item.cell,
+        decor: item.decor,
+        price: item.price,
+        created_at: item.createdAt,
+      }),
+    );
+  }
+
+  async deleteYardItem(id: string) {
+    check(await this.db.from('yard_items').delete().eq('id', id));
   }
 
   async upsertTargets(rows: TargetRow[]) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { today, weekStart } from './dates';
 import { mergeTargets, type Store } from './store';
-import type { AppData, Habit, Log, Pillar, TargetRow } from './types';
+import type { AppData, Habit, Log, Pillar, TargetRow, YardItem } from './types';
 
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -77,6 +77,17 @@ export function useData(store: Store) {
 
     addHabit(name: string, pillar: Pillar) {
       actions.saveHabit({ id: uuid(), name, pillar, archived: false, createdAt: now() });
+    },
+
+    /** Places a decoration in a week's yard. */
+    buyDecor(weekStart: string, cell: number, decor: string, price: number) {
+      const item: YardItem = { id: uuid(), weekStart, cell, decor, price, createdAt: now() };
+      save((d) => ({ ...d, yard: [...d.yard, item] }), () => store.addYardItem(item));
+    },
+
+    /** Removes a decoration; its seeds come back. */
+    removeDecor(id: string) {
+      save((d) => ({ ...d, yard: d.yard.filter((y) => y.id !== id) }), () => store.deleteYardItem(id));
     },
 
     /** Changes a target from this week on. Past weeks keep the target they had. */

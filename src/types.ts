@@ -35,12 +35,25 @@ export interface TargetRow {
   target: number;
 }
 
+/** A decoration placed in a week's yard. Its price is kept so the balance never changes if prices do. */
+export interface YardItem {
+  id: string;
+  /** The Monday of the week whose yard it sits in. */
+  weekStart: string;
+  /** 0-8, row by row across the yard's 3x3 grid. */
+  cell: number;
+  decor: string;
+  price: number;
+  createdAt: string;
+}
+
 export interface AppData {
-  /** The Monday of the first week that counts. Null until onboarding is done. */
+  /** The day the town was founded. Null until onboarding is done. */
   startedOn: string | null;
   habits: Habit[];
   logs: Log[];
   targets: TargetRow[];
+  yard: YardItem[];
 }
 
-export const EMPTY_DATA: AppData = { startedOn: null, habits: [], logs: [], targets: [] };
+export const EMPTY_DATA: AppData = { startedOn: null, habits: [], logs: [], targets: [], yard: [] };

@@ -1,23 +1,6 @@
 import { addDays, weekStart } from './dates';
 import { PILLARS, type AppData, type Pillar, type TargetRow } from './types';
 
-export interface Building {
-  logId: string;
-  pillar: Pillar;
-  day: string;
-  habitName: string;
-  variant: number;
-}
-
-export interface WiltedSpot {
-  id: string;
-  pillar: Pillar;
-  /** The week the habit was missed in. */
-  week: string;
-  /** The week a comeback restored it, or null while still wilted. */
-  restoredIn: string | null;
-}
-
 export interface PillarProgress {
   count: number;
   target: number;
@@ -25,6 +8,20 @@ export interface PillarProgress {
 
 /** How many pillars in one day light that day's lamp. */
 export const BALANCED_PILLARS = 5;
+
+/** How seeds are earned. */
+export const SEEDS = {
+  perHabit: 1,
+  newBuilding: 1,
+  lamp: 5,
+  fullWeek: 25,
+  /** [streak length in days, bonus] */
+  streakMilestones: [
+    [7, 10],
+    [30, 40],
+    [100, 150],
+  ] as [number, number][],
+};
 
 export interface DayBlock {
   day: string;
@@ -43,10 +40,6 @@ export interface WeekBlock {
   /** Monday to Sunday. */
   days: DayBlock[];
   isCurrent: boolean;
-  /** The first week can be partial, so it never wilts. */
-  isWarmup: boolean;
-  buildings: Building[];
-  wilted: WiltedSpot[];
   progress: Record<Pillar, PillarProgress>;
   fullWeek: boolean;
 }
@@ -54,9 +47,11 @@ export interface WeekBlock {
 export interface Town {
   /** Oldest first. */
   weeks: WeekBlock[];
-  openWilted: Record<Pillar, number>;
   /** This week's furthest-behind pillar, or null when every target is met. */
   weakest: Pillar | null;
+  /** Days in a row each pillar has been touched. Today counts until midnight. */
+  streaks: Record<Pillar, number>;
+  seeds: { earned: number; spent: number; balance: number };
 }
 
 export function targetFor(targets: TargetRow[], pillar: Pillar, week: string): number {
@@ -68,15 +63,14 @@ export function targetFor(targets: TargetRow[], pillar: Pillar, week: string): n
   return best?.target ?? 0;
 }
 
-/** A stable number from a log id, used to pick a building's color variant. */
+/** A stable number from a string, used to pick a building's color variant. */
 export function variantFor(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 
-const perPillar = <T,>(make: () => T) =>
-  Object.fromEntries(PILLARS.map((p) => [p, make()])) as Record<Pillar, T>;
+const perPillar = <T,>(make: () => T) => Object.fromEntries(PILLARS.map((p) => [p, make()])) as Record<Pillar, T>;
 
 export function isFullWeek(progress: Record<Pillar, PillarProgress>): boolean {
   const withTargets = PILLARS.filter((p) => progress[p].target > 0);
@@ -99,15 +93,13 @@ export function weakestPillar(progress: Record<Pillar, PillarProgress>): Pillar 
 }
 
 /**
- * Builds the whole town from raw data. Nothing about the town is stored:
- * buildings come from logs, and wilted spots come from missed weekly targets.
- *
- * - When a week ends, each pillar's shortfall (target minus logged) becomes wilted spots.
- * - Logging past a pillar's target in a later week restores that pillar's oldest wilted spots,
- *   one per extra habit. This happens live in the current week.
+ * Builds the whole town from raw data. Nothing here is stored: buildings, lamps,
+ * fountains, streaks and seeds earned all come from the logs. Only seeds spent
+ * come from stored yard decorations.
  */
 export function deriveTown(data: AppData, todayDay: string): Town {
-  const empty: Town = { weeks: [], openWilted: perPillar(() => 0), weakest: null };
+  const spent = data.yard.reduce((n, item) => n + item.price, 0);
+  const empty: Town = { weeks: [], weakest: null, streaks: perPillar(() => 0), seeds: { earned: 0, spent, balance: -spent } };
   if (!data.startedOn) return empty;
 
   const firstWeek = weekStart(data.startedOn);
@@ -122,40 +114,12 @@ export function deriveTown(data: AppData, todayDay: string): Town {
     logsByWeek.get(w)!.push(log);
   }
 
-  const queues = perPillar<WiltedSpot[]>(() => []);
   const weeks: WeekBlock[] = [];
-
   for (let w = firstWeek; w <= currentWeek; w = addDays(w, 7)) {
-    const logs = (logsByWeek.get(w) ?? [])
-      .slice()
-      .sort((a, b) => (a.day + a.createdAt).localeCompare(b.day + b.createdAt));
-
+    const logs = (logsByWeek.get(w) ?? []).slice().sort((a, b) => (a.day + a.createdAt).localeCompare(b.day + b.createdAt));
     const progress = perPillar<PillarProgress>(() => ({ count: 0, target: 0 }));
     for (const p of PILLARS) progress[p].target = targetFor(data.targets, p, w);
     for (const log of logs) progress[log.pillar].count++;
-
-    const isCurrent = w === currentWeek;
-    const isWarmup = w === firstWeek && data.startedOn !== firstWeek;
-    const wilted: WiltedSpot[] = [];
-
-    for (const p of PILLARS) {
-      const { count, target } = progress[p];
-      // Extra habits restore older wilted spots, oldest first.
-      let surplus = Math.max(0, count - target);
-      const queue = queues[p];
-      while (surplus > 0 && queue.length > 0) {
-        queue.shift()!.restoredIn = w;
-        surplus--;
-      }
-      // A finished week leaves its shortfall behind as wilted spots.
-      if (!isCurrent && !isWarmup) {
-        for (let i = 0; i < Math.max(0, target - count); i++) {
-          const spot: WiltedSpot = { id: `${w}-${p}-${i}`, pillar: p, week: w, restoredIn: null };
-          wilted.push(spot);
-          queue.push(spot);
-        }
-      }
-    }
 
     const days: DayBlock[] = [];
     for (let i = 0; i < 7; i++) {
@@ -179,28 +143,40 @@ export function deriveTown(data: AppData, todayDay: string): Town {
       });
     }
 
-    weeks.push({
-      weekStart: w,
-      days,
-      isCurrent,
-      isWarmup,
-      buildings: logs.map((log) => ({
-        logId: log.id,
-        pillar: log.pillar,
-        day: log.day,
-        habitName: (log.habitId && habitNames.get(log.habitId)) || 'A habit',
-        variant: variantFor(log.id),
-      })),
-      wilted,
-      progress,
-      fullWeek: isFullWeek(progress),
-    });
+    weeks.push({ weekStart: w, days, isCurrent: w === currentWeek, progress, fullWeek: isFullWeek(progress) });
   }
+
+  // Seeds from habits, new buildings, lamps and full weeks.
+  let earned = 0;
+  for (const week of weeks) {
+    if (week.fullWeek) earned += SEEDS.fullWeek;
+    for (const day of week.days) {
+      if (!day.active) continue;
+      for (const p of PILLARS) earned += day.counts[p] * SEEDS.perHabit;
+      earned += day.pillarsTouched * SEEDS.newBuilding;
+      if (day.balanced) earned += SEEDS.lamp;
+    }
+  }
+
+  // Streaks, walking every day in order. A missed day resets a pillar's streak;
+  // today hasn't been missed yet, so it never resets one.
+  const run = perPillar(() => 0);
+  for (const week of weeks)
+    for (const day of week.days) {
+      if (!day.active) continue;
+      for (const p of PILLARS) {
+        if (day.counts[p] > 0) {
+          run[p]++;
+          for (const [length, bonus] of SEEDS.streakMilestones) if (run[p] === length) earned += bonus;
+        } else if (day.day < todayDay) run[p] = 0;
+      }
+    }
 
   const current = weeks[weeks.length - 1];
   return {
     weeks,
-    openWilted: Object.fromEntries(PILLARS.map((p) => [p, queues[p].length])) as Record<Pillar, number>,
     weakest: current ? weakestPillar(current.progress) : null,
+    streaks: run,
+    seeds: { earned, spent, balance: earned - spent },
   };
 }

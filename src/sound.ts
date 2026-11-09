@@ -133,6 +133,11 @@ export const sfx = {
       tone(f / 2, at, d, { type: 'triangle', volume: 0.1 });
     }
   },
+  /** Seeds spent in the shop: a bright two-note chime. */
+  buy() {
+    tone(987.77, 0, 0.07, { type: 'square', volume: 0.08 });
+    tone(1318.5, 0.07, 0.18, { type: 'square', volume: 0.08 });
+  },
   /** A habit removed. */
   undo() {
     tone(440, 0, 0.14, { type: 'square', volume: 0.07, slideTo: 220 });

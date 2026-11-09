@@ -1,7 +1,8 @@
 import { PILLAR_INFO } from '../pillars';
 import type { Pillar } from '../types';
-import { fillPoly, hash, line, type Renderer } from './engine';
+import { fillPoly, hash, type Renderer } from './engine';
 import { drawBigFountain, drawLamp, LEVEL_NAMES, LEVELS } from './levels';
+import { findDecor } from './decor';
 
 export type Level = 1 | 2 | 3;
 
@@ -9,7 +10,8 @@ export type IsoItem =
   | { kind: Pillar; level: Level; variant?: number }
   | { kind: 'lamp'; lit: boolean }
   | { kind: 'plaza'; earned: boolean }
-  | { kind: 'wilted' }
+  | { kind: 'decor'; id: string }
+  | { kind: 'seed' }
   | { kind: 'blossom' }
   | { kind: 'fountain' }
   | { kind: 'lot'; pillar: Pillar };
@@ -140,18 +142,6 @@ const PILLAR_DRAW: Record<Pillar, DrawFn> = {
   },
 };
 
-function drawWilted(r: Renderer, gx: number, gy: number) {
-  const cx = gx + 0.5, cy = gy + 0.5;
-  r.box(gx + 0.2, gy + 0.2, 0, 0.6, 0.6, 0.02, '#8a7a5a');
-  r.box(cx - 0.04, cy - 0.04, 0.02, 0.08, 0.08, 0.42, '#5a4636');
-  const wood = r.faces('#5a4636').left, top = r.P(cx, cy, 0.44);
-  for (const [dx, dy, dz] of [[-0.18, 0.05, 0.62], [0.16, -0.05, 0.6], [0.05, 0.16, 0.66], [-0.05, -0.15, 0.58]]) {
-    const end = r.P(cx + dx, cy + dy, dz);
-    line(r.obj, top, end, wood);
-    line(r.obj, [top[0] + 1, top[1]], [end[0] + 1, end[1]], wood);
-  }
-}
-
 function drawBlossom(r: Renderer, gx: number, gy: number) {
   const cx = gx + 0.5, cy = gy + 0.5;
   r.shadow(gx + 0.22, gy + 0.22, 0.56, 0.56, 0.7);
@@ -180,12 +170,19 @@ function drawLot(r: Renderer, gx: number, gy: number, pillar: Pillar) {
   r.faceL(gy + 0.53, gx + 0.38, gx + 0.62, 0.18, 0.3, r.faces(color).left);
 }
 
+/** The seed currency icon: a little sprout in a patch of soil. */
+function drawSeed(r: Renderer, gx: number, gy: number) {
+  r.box(gx + 0.32, gy + 0.32, 0, 0.36, 0.36, 0.08, '#6b4226');
+  r.box(gx + 0.47, gy + 0.47, 0.08, 0.06, 0.06, 0.4, '#4f9a43');
+  const [lx, ly] = r.P(gx + 0.4, gy + 0.56, 0.5);
+  r.blob(lx, ly, r.tw * 0.15, r.tw * 0.08, '#6cb34f');
+  const [rx, ry] = r.P(gx + 0.58, gy + 0.44, 0.56);
+  r.blob(rx, ry, r.tw * 0.15, r.tw * 0.08, '#7cc35c');
+}
+
 /** Draws one item standing on cell (gx, gy) and commits it to the scene. */
 export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
   switch (item.kind) {
-    case 'wilted':
-      drawWilted(r, gx, gy);
-      break;
     case 'blossom':
       drawBlossom(r, gx, gy);
       break;
@@ -197,6 +194,12 @@ export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
       break;
     case 'lamp':
       drawLamp(r, gx, gy, item.lit);
+      break;
+    case 'seed':
+      drawSeed(r, gx, gy);
+      break;
+    case 'decor':
+      findDecor(item.id)?.draw(r, gx, gy);
       break;
     case 'plaza':
       // Spans a 3x3 block whose top corner is (gx, gy).

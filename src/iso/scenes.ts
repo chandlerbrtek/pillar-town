@@ -1,4 +1,5 @@
 import { variantFor, type DayBlock, type WeekBlock } from '../town';
+import type { YardItem } from '../types';
 import { PILLAR_INFO } from '../pillars';
 import { PILLARS, type Pillar } from '../types';
 import { drawItem, levelFor, MAX_ITEM_HEIGHT, type IsoItem, type Level } from './buildings';
@@ -16,17 +17,17 @@ export const DAY_LAMP_ID = 9;
 export const dayPillarId = (p: Pillar) => PILLARS.indexOf(p) + 1;
 
 /** Blocks on a week island. Days run clockwise from the top corner. */
-const DAY_SLOTS: [number, number][] = [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2]];
-const GARDEN_SLOT: [number, number] = [0, 1];
-const PLAZA_SLOT: [number, number] = [1, 1];
-/** Tap ids on a week island: 1-7 = Monday to Sunday, 8 = plaza, 9 = garden. */
+export const DAY_SLOTS: [number, number][] = [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2], [1, 2], [0, 2]];
+export const YARD_SLOT: [number, number] = [0, 1];
+export const PLAZA_SLOT: [number, number] = [1, 1];
+/** Tap ids on a week island: 1-7 = Monday to Sunday, 8 = plaza, 9 = yard. */
 export const WEEK_PLAZA_ID = 8;
-export const WEEK_GARDEN_ID = 9;
+export const WEEK_YARD_ID = 9;
 
 const TOP = MAX_ITEM_HEIGHT;
 const MAX_DEPTH = 2.6;
 
-function makeIsland(N: number, M: number, tw: number) {
+export function makeIsland(N: number, M: number, tw: number) {
   const hw = tw / 2, hh = tw / 4, zs = tw / 2, pad = 8;
   const W = Math.ceil((N + M) * hw + pad * 2);
   const H = Math.ceil((N + M) * hh + (TOP + MAX_DEPTH) * zs + pad * 2);
@@ -34,7 +35,7 @@ function makeIsland(N: number, M: number, tw: number) {
 }
 
 /** Grass top, dirt sides and a rocky point underneath. */
-function islandBase(r: Renderer, N: number, M: number) {
+export function islandBase(r: Renderer, N: number, M: number) {
   const depth = Math.min(0.45 + (N + M) * 0.32, MAX_DEPTH);
   const apex = r.P(N * 0.55, M * 0.55, -depth);
   const rock = r.tones('#6a6a78');
@@ -55,14 +56,14 @@ function islandBase(r: Renderer, N: number, M: number) {
   r.commit();
 }
 
-interface Thing {
+export interface Thing {
   gx: number;
   gy: number;
   id: number;
   item: IsoItem;
 }
 
-function drawThings(r: Renderer, things: Thing[]) {
+export function drawThings(r: Renderer, things: Thing[]) {
   things.sort((a, b) => a.gx + a.gy - (b.gx + b.gy) || a.gx - b.gx);
   for (const t of things) {
     r.currentId = t.id;
@@ -75,7 +76,7 @@ export function pillarItem(day: DayBlock, p: Pillar): IsoItem | null {
   return level ? { kind: p, level: level as Level, variant: variantFor(day.day + p) } : null;
 }
 
-function dayThings(day: DayBlock, ox: number, oy: number, id: (p: Pillar | 'lamp') => number): Thing[] {
+export function dayThings(day: DayBlock, ox: number, oy: number, id: (p: Pillar | 'lamp') => number): Thing[] {
   const things: Thing[] = [];
   for (const p of PILLARS) {
     const item = pillarItem(day, p);
@@ -102,15 +103,15 @@ export function renderDay(day: DayBlock, tw = 64, opts: { hideLot?: Pillar } = {
   return r.result(4, false);
 }
 
-/** A week as one island: seven day blocks around a plaza, plus the wilt and restore garden. */
-export function renderWeek(week: WeekBlock, tw = 36): Rendered {
+/** A week as one island: seven day blocks around a plaza, plus that week's yard. */
+export function renderWeek(week: WeekBlock, tw = 36, yard: YardItem[] = []): Rendered {
   const S = 9;
   const r = makeIsland(S, S, tw);
   islandBase(r, S, S);
   const slotId = new Map<string, number>();
   DAY_SLOTS.forEach(([bx, by], i) => slotId.set(`${bx},${by}`, i + 1));
   slotId.set(PLAZA_SLOT.join(','), WEEK_PLAZA_ID);
-  slotId.set(GARDEN_SLOT.join(','), WEEK_GARDEN_ID);
+  slotId.set(YARD_SLOT.join(','), WEEK_YARD_ID);
 
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
@@ -119,8 +120,9 @@ export function renderWeek(week: WeekBlock, tw = 36): Rendered {
       const isPlaza = id === WEEK_PLAZA_ID;
       const dayIndex = id - 1;
       const isLampSquare = x % 3 === 1 && y % 3 === 1 && id <= 7 && week.days[dayIndex].active;
+      const isYardPath = id === WEEK_YARD_ID && x % 3 === 1;
       r.currentId = id;
-      r.tile(x, y, isPlaza || isLampSquare ? 'road' : 'grass');
+      r.tile(x, y, isPlaza || isLampSquare || isYardPath ? 'road' : 'grass');
     }
 
   // Thin paths along the block edges.
@@ -138,10 +140,8 @@ export function renderWeek(week: WeekBlock, tw = 36): Rendered {
     const [bx, by] = DAY_SLOTS[i];
     things.push(...dayThings(day, bx * 3, by * 3, () => i + 1));
   });
-  const [gx0, gy0] = GARDEN_SLOT.map((v) => v * 3);
-  week.wilted.slice(0, 9).forEach((spot, i) => {
-    things.push({ gx: gx0 + (i % 3), gy: gy0 + Math.floor(i / 3), id: WEEK_GARDEN_ID, item: { kind: spot.restoredIn ? 'blossom' : 'wilted' } });
-  });
+  const [yx, yy] = YARD_SLOT.map((v) => v * 3);
+  for (const y of yard) things.push({ gx: yx + (y.cell % 3), gy: yy + Math.floor(y.cell / 3), id: WEEK_YARD_ID, item: { kind: 'decor', id: y.decor } });
   const [px, py] = PLAZA_SLOT.map((v) => v * 3);
   things.push({ gx: px + 1, gy: py + 1, id: WEEK_PLAZA_ID, item: { kind: 'plaza', earned: week.fullWeek } });
   // The plaza item draws relative to its block's corner.
@@ -155,6 +155,27 @@ export function renderWeek(week: WeekBlock, tw = 36): Rendered {
   return r.result();
 }
 
+/** Tap ids on a yard: cell + 1. */
+export const yardCellId = (cell: number) => cell + 1;
+
+/** One week's yard up close. When editable, open spots show gold dashes. */
+export function renderYard(items: YardItem[], editable: boolean, tw = 64): Rendered {
+  const r = makeIsland(3, 3, tw);
+  islandBase(r, 3, 3);
+  for (let cell = 0; cell < 9; cell++) {
+    const x = cell % 3, y = Math.floor(cell / 3);
+    r.currentId = yardCellId(cell);
+    r.tile(x, y, x === 1 ? 'road' : 'grass');
+  }
+  const taken = new Set(items.map((i) => i.cell));
+  if (editable) for (let cell = 0; cell < 9; cell++) if (!taken.has(cell)) r.dashedDiamond(cell % 3, Math.floor(cell / 3), '#f7c948');
+  drawThings(
+    r,
+    items.map((i) => ({ gx: i.cell % 3, gy: Math.floor(i.cell / 3), id: yardCellId(i.cell), item: { kind: 'decor', id: i.decor } as IsoItem })),
+  );
+  return r.result(4, false);
+}
+
 const iconCache = new Map<string, string>();
 
 /** A single item on a grass tile, as an image URL. Used for small icons. */
@@ -164,7 +185,7 @@ export function iconUrl(item: IsoItem): string {
   if (cached) return cached;
   const tw = 32, hw = tw / 2, zs = tw / 2;
   const r = new Renderer(tw, tw + 8, tw + TOP * zs + 8, hw + 4, TOP * zs + 4);
-  r.tile(0, 0);
+  if (item.kind !== 'seed') r.tile(0, 0);
   drawItem(r, item, 0, 0);
   const url = toDataUrl(r.result(1));
   iconCache.set(key, url);

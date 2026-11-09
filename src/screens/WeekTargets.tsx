@@ -3,7 +3,7 @@ import { PILLAR_INFO } from '../pillars';
 import type { Town, WeekBlock } from '../town';
 import { PILLARS } from '../types';
 
-/** Progress toward each pillar's weekly target, with focus and wilted tags. */
+/** Progress toward each pillar's weekly target, plus pillar streaks. */
 export function WeekTargets({ week, town }: { week: WeekBlock; town: Town }) {
   const remaining = PILLARS.reduce((n, p) => n + Math.max(0, week.progress[p].target - week.progress[p].count), 0);
   return (
@@ -29,12 +29,23 @@ export function WeekTargets({ week, town }: { week: WeekBlock; town: Town }) {
               </span>
               <span className="balance-tags">
                 {town.weakest === p && <span className="badge focus">Focus</span>}
-                {town.openWilted[p] > 0 && <span className="badge wilt">{town.openWilted[p]} wilted</span>}
               </span>
             </li>
           );
         })}
       </ul>
+      <h3 className="streaks-title">Streaks</h3>
+      <div className="streaks">
+        {PILLARS.map((p) => {
+          const n = town.streaks[p];
+          return (
+            <span key={p} className={n >= 7 ? 'streak hot' : n === 0 ? 'streak cold' : 'streak'} style={{ borderColor: PILLAR_INFO[p].color }}>
+              <b style={{ color: PILLAR_INFO[p].color }}>{PILLAR_INFO[p].name}</b> {n ? `${n} day${n > 1 ? 's' : ''}` : '-'}
+            </span>
+          );
+        })}
+      </div>
+      <p className="tiny muted">Days in a row each pillar was touched. Streaks of 7, 30 and 100 days earn bonus seeds.</p>
     </section>
   );
 }

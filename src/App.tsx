@@ -10,6 +10,10 @@ import { Habits } from './screens/Habits';
 import { Login } from './screens/Login';
 import { ToastProvider } from './Toast';
 import { isMuted, setMuted, sfx } from './sound';
+import { deriveTown } from './town';
+import { today } from './dates';
+import { SeedCount } from './screens/SeedCount';
+import type { AppData } from './types';
 
 const localStore = new LocalStore();
 
@@ -46,7 +50,10 @@ function Game({ store, account }: { store: Store; account?: string }) {
     <div className="app">
       <header className="topbar">
         <h1>PillarTown</h1>
-        <SoundToggle />
+        <div className="topbar-right">
+          {data.startedOn && <Wallet data={data} />}
+          <SoundToggle />
+        </div>
       </header>
       {error && <ErrorBanner message={error} onClose={clearError} />}
       <main className="content">
@@ -55,7 +62,7 @@ function Game({ store, account }: { store: Store; account?: string }) {
         ) : tab === 'today' ? (
           <Today data={data} actions={actions} />
         ) : tab === 'town' ? (
-          <TownView data={data} />
+          <TownView data={data} actions={actions} />
         ) : (
           <Habits data={data} actions={actions} storeKind={store.kind} account={account} />
         )}
@@ -73,6 +80,15 @@ function Game({ store, account }: { store: Store; account?: string }) {
         </nav>
       )}
     </div>
+  );
+}
+
+function Wallet({ data }: { data: AppData }) {
+  const balance = useMemo(() => deriveTown(data, today()).seeds.balance, [data]);
+  return (
+    <span className="wallet">
+      <SeedCount value={balance} plain />
+    </span>
   );
 }
 

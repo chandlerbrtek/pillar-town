@@ -779,3 +779,123 @@ button:focus-visible {
     transform: translate(-50%, -100%);
   }
 }
+
+/* Seeds, yard and streaks */
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wallet {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  padding: 2px 8px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.seed-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Silkscreen', monospace;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.seed-count.plain {
+  color: inherit;
+}
+
+.seed-gain {
+  display: inline-flex;
+  align-items: center;
+  color: #3f8f45;
+  font-family: 'Silkscreen', monospace;
+  margin-left: auto;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.yard-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.shop {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border-top: var(--px) solid var(--edge);
+  background: var(--panel-2);
+}
+
+.shop-item {
+  background: var(--bg);
+  border: var(--px) solid var(--edge);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.shop-name {
+  font-size: 14px;
+}
+
+.buy {
+  margin-top: auto;
+  width: 100%;
+  background: var(--accent);
+  color: #2b2340;
+  border: var(--px) solid var(--edge);
+  padding: 5px;
+  display: flex;
+  justify-content: center;
+}
+
+.shop-item.locked .buy {
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.streaks-title {
+  margin-top: 6px;
+}
+
+.streaks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.streak {
+  font-size: 13px;
+  border: 2px solid;
+  padding: 2px 8px;
+  background: var(--bg);
+}
+
+.streak.hot {
+  box-shadow: inset 0 -3px 0 rgba(247, 201, 72, 0.5);
+}
+
+.streak.cold {
+  opacity: 0.5;
+}

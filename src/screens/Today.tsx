@@ -3,6 +3,7 @@ import { longDate, today, weekStart } from '../dates';
 import { PILLAR_INFO } from '../pillars';
 import { buildingName, levelFor, type Level } from '../iso/buildings';
 import { DayCard } from './DayCard';
+import { SeedCount } from './SeedCount';
 import { PillarIcon } from '../iso/IsoIcon';
 import { BALANCED_PILLARS, deriveTown, variantFor } from '../town';
 import { sfx } from '../sound';
@@ -25,6 +26,9 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
     const before = dayBlock.counts[habit.pillar];
     const after = before + 1;
     const level = levelFor(after) as Level;
+    // Seeds this habit earns: the town's total with it, minus the total without it.
+    const withLog = { ...data, logs: [...data.logs, { id: 'preview', habitId: habit.id, pillar: habit.pillar, day, createdAt: new Date().toISOString() }] };
+    const gain = deriveTown(withLog, day).seeds.earned - town.seeds.earned;
     const entry = actions.logHabit(habit, day);
     playLogSounds(habit, before, after);
     const name = buildingName(habit.pillar, level);
@@ -33,7 +37,10 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
       content: (
         <>
           <PillarIcon pillar={habit.pillar} level={level} variant={variantFor(day + habit.pillar)} size={32} />
-          <span>{message}</span>
+          <span className="toast-message">{message}</span>
+          <span className="seed-gain">
+            +<SeedCount value={gain} plain />
+          </span>
         </>
       ),
       action: {

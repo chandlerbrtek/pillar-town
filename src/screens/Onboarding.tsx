@@ -38,8 +38,8 @@ export function Onboarding({ onStart }: Props) {
           each week becomes a new neighborhood.
         </p>
         <p className="muted">
-          Each pillar has a weekly target. Miss it and that spot wilts; go past it in a later week and the wilted spot
-          blooms again.
+          Habits earn seeds, which you spend decorating each week's yard. Touch a pillar day after day to build streaks
+          and earn bonus seeds.
         </p>
       </section>
 

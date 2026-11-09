@@ -1,16 +1,18 @@
 import { memo, useMemo, useState } from 'react';
 import { addDays, parseDay, shortDate, today, weekStart, weekdayShort } from '../dates';
 import { IslandCanvas } from '../iso/IslandCanvas';
-import { renderWeek, toDataUrl, WEEK_GARDEN_ID, WEEK_PLAZA_ID } from '../iso/scenes';
+import { renderWeek, toDataUrl, WEEK_PLAZA_ID, WEEK_YARD_ID } from '../iso/scenes';
 import { sfx } from '../sound';
-import { deriveTown, type WeekBlock } from '../town';
-import { PILLARS, type AppData } from '../types';
+import { deriveTown, type Town, type WeekBlock } from '../town';
+import type { AppData, YardItem } from '../types';
+import type { Actions } from '../useData';
 import { DayCard } from './DayCard';
 import { WeekTargets } from './WeekTargets';
+import { YardCard } from './YardCard';
 
 type Zoom = 'week' | 'year';
 
-export function TownView({ data }: { data: AppData }) {
+export function TownView({ data, actions }: { data: AppData; actions: Actions }) {
   const town = useMemo(() => deriveTown(data, today()), [data]);
   const [zoom, setZoom] = useState<Zoom>('week');
   // Which week is shown in week view, by its Monday. Null means this week.
@@ -19,10 +21,10 @@ export function TownView({ data }: { data: AppData }) {
   const buildings = town.weeks.reduce((n, w) => n + w.days.reduce((m, d) => m + d.pillarsTouched, 0), 0);
   const litDays = town.weeks.reduce((n, w) => n + w.days.filter((d) => d.balanced).length, 0);
   const fullWeeks = town.weeks.filter((w) => w.fullWeek && !w.isCurrent).length;
-  const wilted = PILLARS.reduce((n, p) => n + town.openWilted[p], 0);
 
   const index = Math.max(0, shown ? town.weeks.findIndex((w) => w.weekStart === shown) : town.weeks.length - 1);
   const week = town.weeks[index];
+  const yardFor = (start: string) => data.yard.filter((y) => y.weekStart === start);
 
   const openWeek = (start: string) => {
     setShown(start);
@@ -36,7 +38,7 @@ export function TownView({ data }: { data: AppData }) {
         <Stat label="Buildings" value={buildings} />
         <Stat label="Lamps lit" value={litDays} />
         <Stat label="Full weeks" value={fullWeeks} />
-        <Stat label="Wilted" value={wilted} />
+        <Stat label="Seeds earned" value={town.seeds.earned} />
       </section>
 
       <div className="zoom-toggle" role="tablist" aria-label="Town zoom">
@@ -58,7 +60,7 @@ export function TownView({ data }: { data: AppData }) {
               ›
             </button>
           </div>
-          <WeekIsland key={week.weekStart} week={week} />
+          <WeekIsland key={week.weekStart} week={week} yard={yardFor(week.weekStart)} town={town} actions={actions} />
           {week.isCurrent ? (
             <WeekTargets week={week} town={town} />
           ) : (
@@ -69,7 +71,7 @@ export function TownView({ data }: { data: AppData }) {
         </>
       )}
 
-      {zoom === 'year' && <YearView weeks={town.weeks} onOpen={openWeek} />}
+      {zoom === 'year' && <YearView weeks={town.weeks} yard={data.yard} onOpen={openWeek} />}
     </div>
   );
 }
@@ -83,9 +85,9 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function WeekIsland({ week }: { week: WeekBlock }) {
-  const key = JSON.stringify(week);
-  const img = useMemo(() => renderWeek(week), [key]);
+function WeekIsland({ week, yard, town, actions }: { week: WeekBlock; yard: YardItem[]; town: Town; actions: Actions }) {
+  const key = JSON.stringify(week) + JSON.stringify(yard);
+  const img = useMemo(() => renderWeek(week, 36, yard), [key]);
   const [selected, setSelected] = useState<number | null>(null);
   const title = week.isCurrent ? 'This week' : `Week of ${shortDate(week.weekStart)}`;
   const selectedDay = selected && selected <= 7 ? week.days[selected - 1] : null;
@@ -96,36 +98,38 @@ function WeekIsland({ week }: { week: WeekBlock }) {
         <h3>{title}</h3>
         <div className="block-badges">
           {week.fullWeek && <span className="badge gold">Full week</span>}
-          {week.isWarmup && <span className="badge">Warm-up</span>}
         </div>
       </div>
       <div className="sky">
         <IslandCanvas img={img} selected={selected} onSelect={setSelected} label={`${title}: seven day blocks around a plaza`} />
       </div>
-      <p className="tile-detail">{describe(week, selected)}</p>
+      <p className="tile-detail">{describe(week, selected, yard.length)}</p>
       {selectedDay && (
         <div className="zoom">
           <DayCard day={selectedDay} />
+        </div>
+      )}
+      {selected === WEEK_YARD_ID && (
+        <div className="zoom">
+          <YardCard weekStart={week.weekStart} isCurrent={week.isCurrent} items={yard} balance={town.seeds.balance} actions={actions} />
         </div>
       )}
     </section>
   );
 }
 
-function describe(week: WeekBlock, id: number | null): string {
-  if (id === null) return 'Days run clockwise from the top corner, Mon to Sun. Tap a day to see it up close.';
+function describe(week: WeekBlock, id: number | null, decorations: number): string {
+  if (id === null) return 'Days run clockwise from the top corner, Mon to Sun. Tap a day or the yard to see it up close.';
   if (id === WEEK_PLAZA_ID)
     return week.fullWeek
       ? 'Grand fountain: every weekly target met.'
       : week.isCurrent
         ? 'The plaza earns a grand fountain when every weekly target is met.'
         : 'Empty pedestal: not every target was met this week.';
-  if (id === WEEK_GARDEN_ID) {
-    const restored = week.wilted.filter((s) => s.restoredIn).length;
-    const open = week.wilted.length - restored;
-    if (week.wilted.length === 0) return week.isCurrent ? 'Garden: missed targets wilt here when the week ends.' : 'Garden: no missed targets this week.';
-    return `Garden: ${week.wilted.length} missed ${week.wilted.length === 1 ? 'target' : 'targets'}. ${restored} bloomed again, ${open} still wilted.`;
-  }
+  if (id === WEEK_YARD_ID)
+    return week.isCurrent
+      ? `This week's yard: ${decorations} of 9 spots decorated. Spend seeds to add more.`
+      : `Yard: ${decorations} ${decorations === 1 ? 'decoration' : 'decorations'} from this week.`;
   const day = week.days[id - 1];
   if (!day.active) return `${weekdayShort(day.day)} ${shortDate(day.day)}: ${day.day > today() ? 'still to come.' : 'before your town began.'}`;
   return `${weekdayShort(day.day)} ${shortDate(day.day)}: ${day.pillarsTouched} of 8 pillars${day.balanced ? ', lamp lit' : ''}.`;
@@ -144,7 +148,7 @@ function mondaysOf(year: number): string[] {
   return out;
 }
 
-function YearView({ weeks, onOpen }: { weeks: WeekBlock[]; onOpen: (start: string) => void }) {
+function YearView({ weeks, yard, onOpen }: { weeks: WeekBlock[]; yard: YardItem[]; onOpen: (start: string) => void }) {
   const thisYear = parseDay(today()).getFullYear();
   const firstYear = weeks.length ? parseDay(weeks[0].weekStart).getFullYear() : thisYear;
   const [year, setYear] = useState(thisYear);
@@ -184,7 +188,7 @@ function YearView({ weeks, onOpen }: { weeks: WeekBlock[]; onOpen: (start: strin
               {starts.map((start) => {
                 const w = byStart.get(start);
                 return w ? (
-                  <YearIsland key={start} week={w} onOpen={onOpen} />
+                  <YearIsland key={start} week={w} yard={yard.filter((y) => y.weekStart === start)} onOpen={onOpen} />
                 ) : (
                   <span key={start} className={start > today() ? 'year-slot future' : 'year-slot'} aria-hidden />
                 );
@@ -197,9 +201,9 @@ function YearView({ weeks, onOpen }: { weeks: WeekBlock[]; onOpen: (start: strin
   );
 }
 
-const YearIsland = memo(function YearIsland({ week, onOpen }: { week: WeekBlock; onOpen: (start: string) => void }) {
-  const key = JSON.stringify(week);
-  const url = useMemo(() => toDataUrl(renderWeek(week, 12)), [key]);
+const YearIsland = memo(function YearIsland({ week, yard, onOpen }: { week: WeekBlock; yard: YardItem[]; onOpen: (start: string) => void }) {
+  const key = JSON.stringify(week) + JSON.stringify(yard);
+  const url = useMemo(() => toDataUrl(renderWeek(week, 12, yard)), [key]);
   const label = week.isCurrent ? 'This week' : `Week of ${shortDate(week.weekStart)}`;
   return (
     <button
