@@ -73,7 +73,7 @@ export function drawThings(r: Renderer, things: Thing[]) {
 
 export function pillarItem(day: DayBlock, p: Pillar): IsoItem | null {
   const level = levelFor(day.counts[p]);
-  return level ? { kind: p, level: level as Level, variant: variantFor(day.day + p) } : null;
+  return level ? { kind: p, level: level as Level, variant: variantFor(day.day + p), pennant: day.big?.[p] } : null;
 }
 
 export function dayThings(day: DayBlock, ox: number, oy: number, id: (p: Pillar | 'lamp') => number): Thing[] {
@@ -143,7 +143,7 @@ export function renderWeek(week: WeekBlock, tw = 36, yard: YardItem[] = []): Ren
   const [yx, yy] = YARD_SLOT.map((v) => v * 3);
   for (const y of yard) things.push({ gx: yx + (y.cell % 3), gy: yy + Math.floor(y.cell / 3), id: WEEK_YARD_ID, item: { kind: 'decor', id: y.decor } });
   const [px, py] = PLAZA_SLOT.map((v) => v * 3);
-  things.push({ gx: px + 1, gy: py + 1, id: WEEK_PLAZA_ID, item: { kind: 'plaza', earned: week.fullWeek } });
+  things.push({ gx: px + 1, gy: py + 1, id: WEEK_PLAZA_ID, item: { kind: 'plaza', stage: week.fountain } });
   // The plaza item draws relative to its block's corner.
   const plaza = things[things.length - 1];
   things.sort((a, b) => a.gx + a.gy - (b.gx + b.gy) || a.gx - b.gx);
@@ -205,4 +205,21 @@ export function paint(canvas: HTMLCanvasElement, img: Rendered) {
   const data = ctx.createImageData(img.width, img.height);
   new Uint32Array(data.data.buffer).set(img.pixels);
   ctx.putImageData(data, 0, 0);
+}
+
+const plazaCache = new Map<string, string>();
+
+/** The week's plaza fountain on its own little island, as an image URL. */
+export function plazaUrl(stage: 0 | 1 | 2, tw = 32): string {
+  const key = `${stage}-${tw}`;
+  const hit = plazaCache.get(key);
+  if (hit) return hit;
+  const r = makeIsland(3, 3, tw);
+  islandBase(r, 3, 3);
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) r.tile(x, y, 'road');
+  drawItem(r, { kind: 'plaza', stage }, 0, 0);
+  // Full frame, so every stage is the same size.
+  const url = toDataUrl(r.result(2, false));
+  plazaCache.set(key, url);
+  return url;
 }

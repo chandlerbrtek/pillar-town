@@ -252,11 +252,26 @@ export function drawLamp(r: Renderer, gx: number, gy: number, lit: boolean) {
 }
 
 /** A big fountain spanning a whole 3x3 block, for a full week. */
-export function drawBigFountain(r: Renderer, bx: number, by: number, earned: boolean) {
+/** The week's plaza fountain: 0 dry, 1 trickling (half the week's targets done), 2 flowing (full week). */
+export function drawBigFountain(r: Renderer, bx: number, by: number, stage: 0 | 1 | 2) {
   const cx = bx + 1.5, cy = by + 1.5;
-  if (!earned) {
+  if (stage === 0) {
     r.box(cx - 0.4, cy - 0.4, 0, 0.8, 0.8, 0.16, '#a9a3b8');
     r.box(cx - 0.25, cy - 0.25, 0.16, 0.5, 0.5, 0.1, '#c9c3d6');
+    r.commit();
+    return;
+  }
+  if (stage === 1) {
+    // A smaller basin with a little water and a short spout.
+    r.box(cx - 0.75, cy - 0.75, 0, 1.5, 1.5, 0.18, '#b9b3c8');
+    const w = r.tones('#5fb8e8');
+    fillPoly(r.obj, [r.P(cx - 0.6, cy - 0.6, 0.14), r.P(cx + 0.6, cy - 0.6, 0.14), r.P(cx + 0.6, cy + 0.6, 0.14), r.P(cx - 0.6, cy + 0.6, 0.14)], (x, y) => (hash(x, y) < 40 ? w[0] : w[2]));
+    r.box(cx - 0.14, cy - 0.14, 0.14, 0.28, 0.28, 0.42, '#e4e0ee');
+    r.box(cx - 0.2, cy - 0.2, 0.56, 0.4, 0.4, 0.06, '#d4b03a');
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      r.dot(cx + Math.cos(a) * 0.28, cy + Math.sin(a) * 0.28, 0.5 - (i % 2) * 0.12, '#bfe8ff');
+    }
     r.commit();
     return;
   }

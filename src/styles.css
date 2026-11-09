@@ -1530,3 +1530,65 @@ button:focus-visible {
   color: #ffb86a;
   font-size: 11px;
 }
+
+/* This week's fountain on Today */
+
+.week-fountain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  padding: 8px 10px;
+}
+
+.week-fountain img {
+  width: 72px;
+  image-rendering: pixelated;
+  flex: none;
+}
+
+.week-fountain div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.week-fountain h3 {
+  font-family: 'Silkscreen', monospace;
+  font-weight: 400;
+  font-size: 12px;
+  color: #9fe8ff;
+  margin: 0;
+}
+
+.week-fountain p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.fountain-bar {
+  position: relative;
+  height: 8px;
+  background: var(--bg);
+  border: 2px solid var(--edge);
+}
+
+.fountain-bar span {
+  display: block;
+  height: 100%;
+  background: #5fb8e8;
+}
+
+.fountain-bar i {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--muted);
+}
+
+.habit-plus.done {
+  color: #2b2340;
+}

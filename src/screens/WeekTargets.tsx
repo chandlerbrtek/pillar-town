@@ -29,9 +29,6 @@ export function WeekTargets({ week, town }: { week: WeekBlock; town: Town }) {
               <span className="balance-count">
                 {count}/{target}
               </span>
-              <span className="balance-tags">
-                {town.weakest === p && <span className="badge focus">Focus</span>}
-              </span>
             </li>
           );
         })}

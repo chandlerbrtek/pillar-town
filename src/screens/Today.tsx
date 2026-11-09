@@ -51,6 +51,12 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
   };
 
   const log = (habit: Habit) => {
+    // Each habit counts once a day; tapping a done habit opens its sizes instead.
+    const done = logsForDay.filter((l) => l.habitId === habit.id).at(-1);
+    if (done) {
+      if (sizesOf(habit).length > 1) (adjust?.habitId === habit.id ? setAdjust(null) : openAdjust(habit.id, done.id));
+      return;
+    }
     const before = dayBlock.counts[habit.pillar];
     const after = before + 1;
     const level = levelFor(after) as Level;
@@ -137,16 +143,10 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
                         </span>
                       )}
                     </span>
-                    {count > 1 && <span className="habit-count">×{count}</span>}
-                    <span className="habit-plus" style={{ background: info.color }}>
-                      +
+                    <span className={count > 0 ? 'habit-plus done' : 'habit-plus'} style={{ background: info.color }} aria-label={count > 0 ? 'Done today' : 'Log'}>
+                      {count > 0 ? '✓' : '+'}
                     </span>
                   </button>
-                  {count > 0 && sizesOf(h).length > 1 && last && (
-                    <button className="habit-size" onClick={() => (open ? setAdjust(null) : openAdjust(h.id, last.id))} aria-label={`Change size of ${h.name}`}>
-                      ⋯
-                    </button>
-                  )}
                   {count > 0 && (
                     <button className="habit-minus" onClick={() => unlog(h)} aria-label={`Remove one ${h.name}`}>
                       −
@@ -174,3 +174,4 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
     </div>
   );
 }
+

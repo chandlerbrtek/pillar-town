@@ -9,9 +9,9 @@ import { findCritter } from '../collection/roster';
 export type Level = 1 | 2 | 3;
 
 export type IsoItem =
-  | { kind: Pillar; level: Level; variant?: number }
+  | { kind: Pillar; level: Level; variant?: number; pennant?: boolean }
   | { kind: 'lamp'; lit: boolean }
-  | { kind: 'plaza'; earned: boolean }
+  | { kind: 'plaza'; stage: 0 | 1 | 2 }
   | { kind: 'decor'; id: string }
   | { kind: 'seed' }
   | { kind: 'blossom' }
@@ -211,12 +211,17 @@ export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
     }
     case 'plaza':
       // Spans a 3x3 block whose top corner is (gx, gy).
-      drawBigFountain(r, gx, gy, item.earned);
+      drawBigFountain(r, gx, gy, item.stage);
       break;
     default: {
       const custom = LEVELS[item.kind][item.level - 1];
       if (custom) custom(r, gx, gy);
       else PILLAR_DRAW[item.kind](r, gx, gy, item.variant ?? 0);
+      if (item.pennant) {
+        r.commit();
+        // Vitality's green would vanish against the grass, so it flies the lighter lime of its lot.
+        drawPennant(r, gx, gy, item.kind === 'vitality' ? '#c8f560' : PILLAR_INFO[item.kind].color);
+      }
     }
   }
   r.commit();
@@ -224,3 +229,12 @@ export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
 
 /** How tall the tallest item can get, in world units, so scenes leave room above. */
 export const MAX_ITEM_HEIGHT = 1.8;
+
+/** A Big day: a little pennant in the pillar's color, planted at the lot's left corner, clear of the lamp. */
+function drawPennant(r: Renderer, gx: number, gy: number, color: string) {
+  const x = gx + 0.12, y = gy + 0.82;
+  r.box(x, y, 0, 0.05, 0.05, 1.05, '#5e3b22');
+  r.box(x + 0.05, y + 0.01, 0.74, 0.3, 0.03, 0.26, color);
+  r.box(x + 0.35, y + 0.01, 0.8, 0.12, 0.03, 0.14, color);
+  r.box(x - 0.01, y - 0.01, 1.05, 0.07, 0.07, 0.05, '#f7c948');
+}

@@ -1,5 +1,29 @@
 import { addDays, toDay, weekStart } from './dates';
-import { PILLARS, type AppData, type Pillar, type TargetRow } from './types';
+import { PILLARS, type AppData, type Log, type Pillar, type Size, type TargetRow } from './types';
+
+const SIZE_RANK: Record<Size, number> = { small: 0, usual: 1, big: 2 };
+
+/**
+ * Each habit counts once per day: repeat logs (from before logging was limited) collapse into
+ * one, keeping the biggest size. Logs without a habit are kept as they are.
+ */
+export function oncePerDay(logs: Log[]): Log[] {
+  const best = new Map<string, Log>();
+  const loose: Log[] = [];
+  for (const log of logs) {
+    if (!log.habitId) {
+      loose.push(log);
+      continue;
+    }
+    const key = `${log.habitId}|${log.day}`;
+    const prev = best.get(key);
+    if (!prev || SIZE_RANK[log.size ?? 'usual'] > SIZE_RANK[prev.size ?? 'usual']) best.set(key, log);
+  }
+  return [...best.values(), ...loose];
+}
+
+/** The plaza fountain: dry, trickling once half the week's target days are done, flowing on a full week. */
+export type FountainStage = 0 | 1 | 2;
 
 export interface PillarProgress {
   count: number;
@@ -44,6 +68,8 @@ export interface DayBlock {
   pillarsTouched: number;
   /** Pillars needed to light this day's lamp. */
   lampNeed: number;
+  /** Pillars with a Big log that day, which fly a pennant. */
+  big: Record<Pillar, boolean>;
   balanced: boolean;
 }
 
@@ -54,6 +80,7 @@ export interface WeekBlock {
   isCurrent: boolean;
   progress: Record<Pillar, PillarProgress>;
   fullWeek: boolean;
+  fountain: FountainStage;
 }
 
 export interface Town {
@@ -94,6 +121,18 @@ export function isFullWeek(progress: Record<Pillar, PillarProgress>): boolean {
   return withTargets.length > 0 && withTargets.every((p) => progress[p].count >= progress[p].target);
 }
 
+export function fountainStage(progress: Record<Pillar, PillarProgress>): FountainStage {
+  if (isFullWeek(progress)) return 2;
+  let done = 0, needed = 0;
+  for (const p of PILLARS) {
+    const { count, target } = progress[p];
+    if (target <= 0) continue;
+    done += Math.min(count, target);
+    needed += target;
+  }
+  return needed > 0 && done * 2 >= needed ? 1 : 0;
+}
+
 export function weakestPillar(progress: Record<Pillar, PillarProgress>): Pillar | null {
   let weakest: Pillar | null = null;
   let lowest = 1;
@@ -126,8 +165,9 @@ export function deriveTown(data: AppData, todayDay: string): Town {
   const habitDays = data.habits.filter((h) => !h.archived).map((h) => ({ pillar: h.pillar, from: toDay(new Date(h.createdAt)) }));
   const pillarsOn = (day: string) => new Set(habitDays.filter((h) => h.from <= day).map((h) => h.pillar)).size;
 
+  const allLogs = oncePerDay(data.logs);
   const logsByWeek = new Map<string, AppData['logs']>();
-  for (const log of data.logs) {
+  for (const log of allLogs) {
     const w = weekStart(log.day);
     if (w < firstWeek || w > currentWeek) continue;
     if (!logsByWeek.has(w)) logsByWeek.set(w, []);
@@ -149,9 +189,11 @@ export function deriveTown(data: AppData, todayDay: string): Town {
       const day = addDays(w, i);
       const counts = perPillar(() => 0);
       const named = perPillar<Map<string, number>>(() => new Map());
+      const big = perPillar(() => false);
       for (const log of logs) {
         if (log.day !== day) continue;
         counts[log.pillar]++;
+        if (log.size === 'big') big[log.pillar] = true;
         const name = (log.habitId && habitNames.get(log.habitId)) || 'A habit';
         named[log.pillar].set(name, (named[log.pillar].get(name) ?? 0) + 1);
       }
@@ -164,16 +206,17 @@ export function deriveTown(data: AppData, todayDay: string): Town {
         habits: Object.fromEntries(PILLARS.map((p) => [p, [...named[p]].map(([name, count]) => ({ name, count }))])) as DayBlock['habits'],
         pillarsTouched,
         lampNeed: need,
+        big,
         balanced: pillarsTouched >= need,
       });
     }
 
-    weeks.push({ weekStart: w, days, isCurrent: w === currentWeek, progress, fullWeek: isFullWeek(progress) });
+    weeks.push({ weekStart: w, days, isCurrent: w === currentWeek, progress, fullWeek: isFullWeek(progress), fountain: fountainStage(progress) });
   }
 
   // Seeds from habits, Big sizes, new buildings, lamps and full weeks.
   let earned = 0;
-  for (const log of data.logs) if (log.size === 'big' && log.day >= data.startedOn && log.day <= todayDay) earned += SEEDS.bigBonus;
+  for (const log of allLogs) if (log.size === 'big' && log.day >= data.startedOn && log.day <= todayDay) earned += SEEDS.bigBonus;
   for (const week of weeks) {
     if (week.fullWeek) earned += SEEDS.fullWeek;
     for (const day of week.days) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveTown, lampNeed, SEEDS, targetFor } from './town';
+import { deriveTown, lampNeed, oncePerDay, SEEDS, targetFor } from './town';
 import type { AppData, Log, Pillar, YardItem } from './types';
 
 let n = 0;
@@ -138,5 +138,26 @@ describe('habit sizes and the lamp', () => {
     const town = deriveTown(base(logs), '2026-11-02');
     expect(town.weeks[0].progress.mind.count).toBe(1);
     expect(town.seeds.earned).toBe(2 * SEEDS.perHabit + SEEDS.newBuilding + SEEDS.bigBonus);
+  });
+});
+
+describe('once a day, pennants and the fountain', () => {
+  const withHabit = (pillar: Pillar, day: string, size: 'small' | 'usual' | 'big' = 'usual'): Log => ({ ...log(pillar, day), habitId: `h-${pillar}`, size });
+
+  it('counts each habit once per day, keeping its biggest size', () => {
+    const logs = [withHabit('mind', '2026-11-02'), withHabit('mind', '2026-11-02', 'big'), withHabit('mind', '2026-11-02')];
+    expect(oncePerDay(logs)).toHaveLength(1);
+    const day = deriveTown(base(logs), '2026-11-02').weeks[0].days[0];
+    expect(day.counts.mind).toBe(1);
+    expect(day.big.mind).toBe(true);
+  });
+
+  it('trickles at half the target days and flows on a full week', () => {
+    // Targets: vitality 3, mind 1 → 4 target days.
+    const half = [withHabit('vitality', '2026-11-02'), withHabit('vitality', '2026-11-03')];
+    expect(deriveTown(base(half), '2026-11-04').weeks[0].fountain).toBe(1);
+    expect(deriveTown(base(half.slice(0, 1)), '2026-11-04').weeks[0].fountain).toBe(0);
+    const full = [...half, withHabit('vitality', '2026-11-04'), withHabit('mind', '2026-11-04')];
+    expect(deriveTown(base(full), '2026-11-04').weeks[0].fountain).toBe(2);
   });
 });

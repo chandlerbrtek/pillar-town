@@ -9,6 +9,7 @@ import type { Actions } from '../useData';
 import { DayCard } from './DayCard';
 import { WeekTargets } from './WeekTargets';
 import { YardCard } from './YardCard';
+import { WeekFountain } from './WeekFountain';
 import { CRITTERS, type Critter } from '../collection/roster';
 
 type Zoom = 'week' | 'year';
@@ -114,6 +115,11 @@ function WeekIsland({ week, yard, town, critters, actions }: { week: WeekBlock; 
           <DayCard day={selectedDay} />
         </div>
       )}
+      {selected === WEEK_PLAZA_ID && (
+        <div className="zoom">
+          <WeekFountain week={week} />
+        </div>
+      )}
       {selected === WEEK_YARD_ID && (
         <div className="zoom">
           <YardCard weekStart={week.weekStart} isCurrent={week.isCurrent} items={yard} balance={town.seeds.balance} critters={critters} actions={actions} />
@@ -126,11 +132,7 @@ function WeekIsland({ week, yard, town, critters, actions }: { week: WeekBlock; 
 function describe(week: WeekBlock, id: number | null, decorations: number): string {
   if (id === null) return 'Days run clockwise from the top corner, Mon to Sun. Tap a day or the yard to see it up close.';
   if (id === WEEK_PLAZA_ID)
-    return week.fullWeek
-      ? 'Grand fountain: every weekly target met.'
-      : week.isCurrent
-        ? 'The plaza earns a grand fountain when every weekly target is met.'
-        : 'Empty pedestal: not every target was met this week.';
+    return 'The plaza fountain trickles once half the weekly target days are done, and flows when every target is met.';
   if (id === WEEK_YARD_ID)
     return week.isCurrent
       ? `This week's yard: ${decorations} of 9 spots decorated. Spend seeds to add more.`
