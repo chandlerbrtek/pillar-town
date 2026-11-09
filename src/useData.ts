@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { today, weekStart } from './dates';
-import { mergeTargets, type Store } from './store';
-import { targetFor } from './town';
-import type { AppData, CapsulePull, Habit, Log, Pillar, Size, TargetRow, YardItem } from './types';
+import { today } from './dates';
+import type { Store } from './store';
+import type { AppData, CapsulePull, Habit, Log, Size, YardItem } from './types';
 
 /** A habit as chosen in onboarding or the Habits tab, before it has an id. */
 export type NewHabit = Pick<Habit, 'name' | 'pillar' | 'small' | 'usual' | 'big'>;
-/** The weekly target a pillar gets when its first habit is added: most days, not every day. */
-export const STARTING_TARGET = 4;
+
 
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -46,19 +44,13 @@ export function useData(store: Store) {
   );
 
   const actions = {
-    async start(starters: NewHabit[], targets: Record<Pillar, number>) {
+    async start(starters: NewHabit[]) {
       const day = today();
       const habits: Habit[] = starters.map((s) => ({ id: uuid(), ...s, archived: false, createdAt: now() }));
-      const rows: TargetRow[] = Object.entries(targets).map(([pillar, target]) => ({
-        pillar: pillar as Pillar,
-        weekStart: weekStart(day),
-        target,
-      }));
       try {
         await store.upsertHabits(habits);
-        await store.upsertTargets(rows);
         await store.setStartedOn(day);
-        setData((d) => ({ ...(d as AppData), startedOn: day, habits, targets: rows }));
+        setData((d) => ({ ...(d as AppData), startedOn: day, habits }));
       } catch (e) {
         setError(`Couldn't found your town: ${(e as Error).message}`);
       }
@@ -85,10 +77,8 @@ export function useData(store: Store) {
       );
     },
 
-    /** Adds a habit. A pillar's first habit gives it a starting weekly target. */
-    addHabit(habit: NewHabit, current: AppData) {
+    addHabit(habit: NewHabit) {
       actions.saveHabit({ id: uuid(), ...habit, archived: false, createdAt: now() });
-      if (targetFor(current.targets, habit.pillar, weekStart(today())) === 0) actions.setTarget(habit.pillar, STARTING_TARGET);
     },
 
     /** Places a decoration in a week's yard. */
@@ -107,12 +97,6 @@ export function useData(store: Store) {
     /** Removes a decoration; its seeds come back. */
     removeDecor(id: string) {
       save((d) => ({ ...d, yard: d.yard.filter((y) => y.id !== id) }), () => store.deleteYardItem(id));
-    },
-
-    /** Changes a target from this week on. Past weeks keep the target they had. */
-    setTarget(pillar: Pillar, target: number) {
-      const row: TargetRow = { pillar, weekStart: weekStart(today()), target };
-      save((d) => ({ ...d, targets: mergeTargets(d.targets, [row]) }), () => store.upsertTargets([row]));
     },
   };
 

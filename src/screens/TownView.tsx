@@ -132,7 +132,7 @@ function WeekIsland({ week, yard, town, critters, actions }: { week: WeekBlock; 
 function describe(week: WeekBlock, id: number | null, decorations: number): string {
   if (id === null) return 'Days run clockwise from the top corner, Mon to Sun. Tap a day or the yard to see it up close.';
   if (id === WEEK_PLAZA_ID)
-    return 'The plaza fountain trickles once half the weekly target days are done, and flows when every target is met.';
+    return 'The plaza fountain trickles once every pillar has 3 days this week, and flows once each reaches 5.';
   if (id === WEEK_YARD_ID)
     return week.isCurrent
       ? `This week's yard: ${decorations} of 9 spots decorated. Spend seeds to add more.`

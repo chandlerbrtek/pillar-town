@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { today, weekStart } from '../dates';
+import { today } from '../dates';
 import { PILLAR_INFO } from '../pillars';
-import { PillarIcon } from '../iso/IsoIcon';
 import { hasRoom, isSettled, MAX_SETTLING, recentDays, settling, SETTLE_DAYS, SETTLE_WINDOW } from '../settling';
 import { supabase } from '../supabaseStore';
-import { targetFor } from '../town';
 import { PILLARS, type AppData, type Habit, type Pillar } from '../types';
 import type { Actions } from '../useData';
 import { cleanSizes, SizeFields, type Sizes } from './SizeFields';
@@ -18,7 +16,6 @@ interface Props {
 
 export function Habits({ data, actions, storeKind, account }: Props) {
   const day = today();
-  const week = weekStart(day);
   const [name, setName] = useState('');
   const [pillar, setPillar] = useState<Pillar>('vitality');
   const [sizes, setSizes] = useState<Sizes>({});
@@ -30,38 +27,13 @@ export function Habits({ data, actions, storeKind, account }: Props) {
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canAdd) return;
-    actions.addHabit({ name: name.trim(), pillar, ...cleanSizes(sizes) }, data);
+    actions.addHabit({ name: name.trim(), pillar, ...cleanSizes(sizes) });
     setName('');
     setSizes({});
   };
 
   return (
     <div className="stack">
-      <section className="panel">
-        <h2>Weekly targets</h2>
-        <p className="muted tiny">How many days a week each pillar needs, at any size. Changes apply from this week on.</p>
-        <ul className="targets">
-          {PILLARS.map((p) => {
-            const t = targetFor(data.targets, p, week);
-            return (
-              <li key={p}>
-                <PillarIcon pillar={p} size={26} />
-                <span className="balance-name">{PILLAR_INFO[p].name}</span>
-                <div className="stepper">
-                  <button onClick={() => actions.setTarget(p, Math.max(0, t - 1))} aria-label={`Lower ${PILLAR_INFO[p].name} target`}>
-                    −
-                  </button>
-                  <span>{t}</span>
-                  <button onClick={() => actions.setTarget(p, Math.min(7, t + 1))} aria-label={`Raise ${PILLAR_INFO[p].name} target`}>
-                    +
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
       <section className="panel">
         <div className="panel-head">
           <h2>Habits</h2>

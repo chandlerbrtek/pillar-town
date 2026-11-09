@@ -1568,27 +1568,35 @@ button:focus-visible {
   font-size: 14px;
 }
 
-.fountain-bar {
-  position: relative;
-  height: 8px;
-  background: var(--bg);
-  border: 2px solid var(--edge);
-}
-
-.fountain-bar span {
-  display: block;
-  height: 100%;
-  background: #5fb8e8;
-}
-
-.fountain-bar i {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  background: var(--muted);
-}
-
 .habit-plus.done {
   color: #2b2340;
+}
+
+.fountain-pillars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fountain-pillars li {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  background: var(--bg);
+  border: 2px solid var(--edge);
+  padding: 2px 7px;
+  font-size: 13px;
+}
+
+.fountain-pillars li b {
+  font-family: 'Silkscreen', monospace;
+  font-weight: 400;
+  font-size: 10px;
+}
+
+.fountain-pillars li.done {
+  border-color: #5fb8e8;
 }

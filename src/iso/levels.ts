@@ -252,7 +252,7 @@ export function drawLamp(r: Renderer, gx: number, gy: number, lit: boolean) {
 }
 
 /** A big fountain spanning a whole 3x3 block, for a full week. */
-/** The week's plaza fountain: 0 dry, 1 trickling (half the week's targets done), 2 flowing (full week). */
+/** The week's plaza fountain: 0 dry, 1 trickling (every pillar past halfway), 2 flowing (full week). */
 export function drawBigFountain(r: Renderer, bx: number, by: number, stage: 0 | 1 | 2) {
   const cx = bx + 1.5, cy = by + 1.5;
   if (stage === 0) {

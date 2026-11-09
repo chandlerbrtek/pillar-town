@@ -3,11 +3,11 @@ import { PILLAR_INFO } from '../pillars';
 import { PillarIcon } from '../iso/IsoIcon';
 import { MAX_SETTLING } from '../settling';
 import { PILLARS, type Pillar } from '../types';
-import { STARTING_TARGET, type NewHabit } from '../useData';
+import type { NewHabit } from '../useData';
 import { cleanSizes, SizeFields } from './SizeFields';
 
 interface Props {
-  onStart: (habits: NewHabit[], targets: Record<Pillar, number>) => Promise<void>;
+  onStart: (habits: NewHabit[]) => Promise<void>;
 }
 
 /** Founding the town: up to three habits, each with a Small version. */
@@ -34,12 +34,7 @@ export function Onboarding({ onStart }: Props) {
 
   const start = async () => {
     setBusy(true);
-    const chosen = new Set(picked.map((h) => h.pillar));
-    const targets = Object.fromEntries(PILLARS.map((p) => [p, chosen.has(p) ? STARTING_TARGET : 0])) as Record<Pillar, number>;
-    await onStart(
-      picked.map((h) => ({ name: h.name, pillar: h.pillar, ...cleanSizes(h) })),
-      targets,
-    );
+    await onStart(picked.map((h) => ({ name: h.name, pillar: h.pillar, ...cleanSizes(h) })));
     setBusy(false);
   };
 

@@ -7,7 +7,6 @@ export interface PillarInfo {
   color: string;
   builds: string;
   suggestions: string[];
-  defaultTarget: number;
 }
 
 export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
@@ -18,7 +17,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#5a9e4b',
     builds: 'Trees and a running track',
     suggestions: ['Exercise', '7+ hours of sleep', 'Eat well', 'Drink water'],
-    defaultTarget: 4,
   },
   mind: {
     id: 'mind',
@@ -27,7 +25,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#4f7cc9',
     builds: 'A library, bookshops, a school',
     suggestions: ['Read 20 minutes', 'Course or tutorial', 'Puzzle', 'Language practice'],
-    defaultTarget: 3,
   },
   heart: {
     id: 'heart',
@@ -36,7 +33,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#d9668f',
     builds: 'Ponds, flower beds, a cozy café',
     suggestions: ['Journal', 'Therapy', 'Name a feeling', 'Screen-free hour'],
-    defaultTarget: 2,
   },
   spirit: {
     id: 'spirit',
@@ -45,7 +41,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#9b6fd1',
     builds: 'Lanterns, a shrine, a stargazing hill',
     suggestions: ['Meditate', 'Gratitude list', 'Time in nature', 'Reflection'],
-    defaultTarget: 3,
   },
   bond: {
     id: 'bond',
@@ -54,7 +49,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#e8913a',
     builds: 'Houses with lights on, a town square',
     suggestions: ['Call a friend or family', 'Quality time', 'Send a kind message'],
-    defaultTarget: 2,
   },
   craft: {
     id: 'craft',
@@ -63,7 +57,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#8a6a4f',
     builds: 'Workshops, a clock tower, a studio',
     suggestions: ['Deep work block', 'Practice a skill', 'Side project'],
-    defaultTarget: 3,
   },
   fortune: {
     id: 'fortune',
@@ -72,7 +65,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#d4b03a',
     builds: 'Market stalls, a bank, a harbor',
     suggestions: ['Log spending', 'Review budget', 'Save something', 'No-spend day'],
-    defaultTarget: 1,
   },
   harmony: {
     id: 'harmony',
@@ -81,7 +73,6 @@ export const PILLAR_INFO: Record<Pillar, PillarInfo> = {
     color: '#3fa7a0',
     builds: 'Gardens, clean streets, windmills',
     suggestions: ['Tidy up', 'Cook at home', 'Go outside', 'Do a chore'],
-    defaultTarget: 3,
   },
 };
 

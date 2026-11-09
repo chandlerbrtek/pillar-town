@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveTown, lampNeed, oncePerDay, SEEDS, targetFor } from './town';
+import { deriveTown, lampNeed, oncePerDay, SEEDS, WEEKLY_TARGET } from './town';
 import type { AppData, Log, Pillar, YardItem } from './types';
 
 let n = 0;
@@ -24,26 +24,23 @@ const base = (logs: Log[], startedOn = '2026-11-02', yard: YardItem[] = []): App
   ],
 });
 
-describe('targetFor', () => {
-  it('uses the latest row in effect for that week', () => {
-    const targets = [
-      { pillar: 'mind' as const, weekStart: '2026-11-02', target: 1 },
-      { pillar: 'mind' as const, weekStart: '2026-11-16', target: 4 },
-    ];
-    expect(targetFor(targets, 'mind', '2026-11-09')).toBe(1);
-    expect(targetFor(targets, 'mind', '2026-11-16')).toBe(4);
-    expect(targetFor(targets, 'mind', '2026-10-26')).toBe(0);
-    expect(targetFor(targets, 'heart', '2026-11-16')).toBe(0);
-  });
+/** Adds habits in these pillars, from before the town started, which gives each a weekly target. */
+const habitsIn = (data: AppData, pillars: Pillar[]): AppData => ({
+  ...data,
+  habits: pillars.map((p) => ({ id: `h-${p}`, name: p, pillar: p, archived: false, createdAt: '2026-11-01T08:00:00' })),
 });
+const days = (pillar: Pillar, ds: string[]) => ds.map((d) => log(pillar, `2026-11-${d}`));
 
 describe('deriveTown', () => {
-  it('marks a full week and finds the weakest pillar', () => {
-    const logs = ['03', '04', '05'].map((d) => log('vitality', `2026-11-${d}`));
-    let town = deriveTown(base(logs), '2026-11-06');
+  it(`gives each pillar with a habit a target of ${WEEKLY_TARGET} days, and marks a full week`, () => {
+    const vitality = days('vitality', ['02', '03', '04', '05', '06']);
+    const mind = days('mind', ['02', '03', '04', '05']);
+    let town = deriveTown(habitsIn(base([...vitality, ...mind]), ['vitality', 'mind']), '2026-11-08');
+    expect(town.weeks[0].progress.vitality.target).toBe(WEEKLY_TARGET);
+    expect(town.weeks[0].progress.heart.target).toBe(0);
     expect(town.weakest).toBe('mind');
     expect(town.weeks[0].fullWeek).toBe(false);
-    town = deriveTown(base([...logs, log('mind', '2026-11-06')]), '2026-11-06');
+    town = deriveTown(habitsIn(base([...vitality, ...mind, log('mind', '2026-11-07')]), ['vitality', 'mind']), '2026-11-08');
     expect(town.weeks[0].fullWeek).toBe(true);
     expect(town.weakest).toBeNull();
   });
@@ -76,11 +73,10 @@ describe('seeds', () => {
   });
 
   it('adds lamp and full week bonuses', () => {
-    const pillars: Pillar[] = ['mind', 'heart', 'spirit', 'bond', 'craft'];
-    const logs = [...pillars.map((p) => log(p, '2026-11-03')), ...['03', '04', '05'].map((d) => log('vitality', `2026-11-${d}`))];
-    const town = deriveTown(base(logs), '2026-11-05');
-    // 8 habits; buildings: 6 on Tue, 1 Wed, 1 Thu; one lamp; one full week.
-    expect(town.seeds.earned).toBe(8 + 8 + SEEDS.lamp + SEEDS.fullWeek);
+    // One habit, in Vitality: the lamp needs just that pillar, and 5 days make a full week.
+    const logs = days('vitality', ['02', '03', '04', '05', '06']);
+    const town = deriveTown(habitsIn(base(logs), ['vitality']), '2026-11-06');
+    expect(town.seeds.earned).toBe(5 + 5 + 5 * SEEDS.lamp + SEEDS.fullWeek);
   });
 
   it('subtracts what was spent on the yard', () => {
@@ -152,12 +148,13 @@ describe('once a day, pennants and the fountain', () => {
     expect(day.big.mind).toBe(true);
   });
 
-  it('trickles at half the target days and flows on a full week', () => {
-    // Targets: vitality 3, mind 1 → 4 target days.
-    const half = [withHabit('vitality', '2026-11-02'), withHabit('vitality', '2026-11-03')];
-    expect(deriveTown(base(half), '2026-11-04').weeks[0].fountain).toBe(1);
-    expect(deriveTown(base(half.slice(0, 1)), '2026-11-04').weeks[0].fountain).toBe(0);
-    const full = [...half, withHabit('vitality', '2026-11-04'), withHabit('mind', '2026-11-04')];
-    expect(deriveTown(base(full), '2026-11-04').weeks[0].fountain).toBe(2);
+  it('trickles once every pillar is past halfway, and flows on a full week', () => {
+    // Habits in Vitality and Mind: each needs 3 days to trickle, 5 to flow.
+    const town = (logs: Log[]) => deriveTown(habitsIn(base(logs), ['vitality', 'mind']), '2026-11-08').weeks[0].fountain;
+    const vitality = days('vitality', ['02', '03', '04', '05', '06']);
+    // One pillar can't carry the other.
+    expect(town([...vitality, ...days('mind', ['02', '03'])])).toBe(0);
+    expect(town([...vitality, ...days('mind', ['02', '03', '04'])])).toBe(1);
+    expect(town([...vitality, ...days('mind', ['02', '03', '04', '05', '06'])])).toBe(2);
   });
 });

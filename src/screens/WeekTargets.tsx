@@ -1,6 +1,6 @@
 import { PillarIcon } from '../iso/IsoIcon';
 import { PILLAR_INFO } from '../pillars';
-import type { Town, WeekBlock } from '../town';
+import { WEEKLY_TARGET, type Town, type WeekBlock } from '../town';
 import { PILLARS } from '../types';
 
 /** Progress toward each pillar's weekly target, plus pillar streaks. */
@@ -14,6 +14,7 @@ export function WeekTargets({ week, town }: { week: WeekBlock; town: Town }) {
         <h2>This week's targets</h2>
         {week.fullWeek ? <span className="badge gold">Full week!</span> : <span className="tiny muted">{remaining} to go for a full week</span>}
       </div>
+      <p className="tiny muted">The goal: {WEEKLY_TARGET} days a week in each pillar you have a habit in, at any size. Hit them all for a full week.</p>
       <ul className="balance">
         {shown.map((p) => {
           const { count, target } = week.progress[p];

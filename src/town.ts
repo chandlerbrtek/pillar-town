@@ -1,5 +1,8 @@
 import { addDays, toDay, weekStart } from './dates';
-import { PILLARS, type AppData, type Log, type Pillar, type Size, type TargetRow } from './types';
+import { PILLARS, type AppData, type Log, type Pillar, type Size } from './types';
+
+/** Every pillar you have a habit in aims for this many days a week: most days, with two to spare. */
+export const WEEKLY_TARGET = 5;
 
 const SIZE_RANK: Record<Size, number> = { small: 0, usual: 1, big: 2 };
 
@@ -22,7 +25,7 @@ export function oncePerDay(logs: Log[]): Log[] {
   return [...best.values(), ...loose];
 }
 
-/** The plaza fountain: dry, trickling once half the week's target days are done, flowing on a full week. */
+/** The plaza fountain: dry, trickling once every pillar is past halfway, flowing on a full week. */
 export type FountainStage = 0 | 1 | 2;
 
 export interface PillarProgress {
@@ -98,15 +101,6 @@ export interface Town {
   seeds: { earned: number; spent: number; balance: number };
 }
 
-export function targetFor(targets: TargetRow[], pillar: Pillar, week: string): number {
-  let best: TargetRow | null = null;
-  for (const row of targets) {
-    if (row.pillar !== pillar || row.weekStart > week) continue;
-    if (!best || row.weekStart > best.weekStart) best = row;
-  }
-  return best?.target ?? 0;
-}
-
 /** A stable number from a string, used to pick a building's color variant. */
 export function variantFor(s: string): number {
   let h = 0;
@@ -121,16 +115,14 @@ export function isFullWeek(progress: Record<Pillar, PillarProgress>): boolean {
   return withTargets.length > 0 && withTargets.every((p) => progress[p].count >= progress[p].target);
 }
 
+/** Days a pillar needs for the fountain to trickle: past halfway to its target (3 of 5). */
+export const trickleAt = (target: number) => Math.ceil(target / 2);
+
+/** Dry, trickling once every pillar with a habit is past halfway, flowing once every pillar hits its target. */
 export function fountainStage(progress: Record<Pillar, PillarProgress>): FountainStage {
   if (isFullWeek(progress)) return 2;
-  let done = 0, needed = 0;
-  for (const p of PILLARS) {
-    const { count, target } = progress[p];
-    if (target <= 0) continue;
-    done += Math.min(count, target);
-    needed += target;
-  }
-  return needed > 0 && done * 2 >= needed ? 1 : 0;
+  const withTargets = PILLARS.filter((p) => progress[p].target > 0);
+  return withTargets.length > 0 && withTargets.every((p) => progress[p].count >= trickleAt(progress[p].target)) ? 1 : 0;
 }
 
 export function weakestPillar(progress: Record<Pillar, PillarProgress>): Pillar | null {
@@ -163,7 +155,8 @@ export function deriveTown(data: AppData, todayDay: string): Town {
   const habitNames = new Map(data.habits.map((h) => [h.id, h.name]));
   // The day each current habit was added, for how many pillars count toward each day's lamp.
   const habitDays = data.habits.filter((h) => !h.archived).map((h) => ({ pillar: h.pillar, from: toDay(new Date(h.createdAt)) }));
-  const pillarsOn = (day: string) => new Set(habitDays.filter((h) => h.from <= day).map((h) => h.pillar)).size;
+  const pillarsBy = (day: string) => new Set(habitDays.filter((h) => h.from <= day).map((h) => h.pillar));
+  const pillarsOn = (day: string) => pillarsBy(day).size;
 
   const allLogs = oncePerDay(data.logs);
   const logsByWeek = new Map<string, AppData['logs']>();
@@ -178,7 +171,9 @@ export function deriveTown(data: AppData, todayDay: string): Town {
   for (let w = firstWeek; w <= currentWeek; w = addDays(w, 7)) {
     const logs = (logsByWeek.get(w) ?? []).slice().sort((a, b) => (a.day + a.createdAt).localeCompare(b.day + b.createdAt));
     const progress = perPillar<PillarProgress>(() => ({ count: 0, target: 0 }));
-    for (const p of PILLARS) progress[p].target = targetFor(data.targets, p, w);
+    // A pillar has a target once it has a habit, in any week that habit was around for.
+    const withHabits = pillarsBy(addDays(w, 6));
+    for (const p of PILLARS) progress[p].target = withHabits.has(p) ? WEEKLY_TARGET : 0;
     // Targets count days: touching a pillar twice in one day still counts once.
     const daysTouched = perPillar<Set<string>>(() => new Set());
     for (const log of logs) daysTouched[log.pillar].add(log.day);
