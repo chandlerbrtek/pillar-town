@@ -98,7 +98,7 @@ export function weakestPillar(progress: Record<Pillar, PillarProgress>): Pillar 
  * come from stored yard decorations.
  */
 export function deriveTown(data: AppData, todayDay: string): Town {
-  const spent = data.yard.reduce((n, item) => n + item.price, 0);
+  const spent = data.yard.reduce((n, item) => n + item.price, 0) + data.pulls.reduce((n, p) => n + p.seeds, 0);
   const empty: Town = { weeks: [], weakest: null, streaks: perPillar(() => 0), seeds: { earned: 0, spent, balance: -spent } };
   if (!data.startedOn) return empty;
 

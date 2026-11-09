@@ -119,6 +119,9 @@ export interface Rendered {
  * World units: one cell is 1 x 1, and a height of 1 rises half a tile width on screen.
  * x runs down-right on screen, y runs down-left. Light comes from the top-left.
  */
+/** Marks the part of an object that stays on the ground, like a critter's pedestal. */
+export const BASE_FLAG = 0x8000;
+
 export class Renderer {
   readonly hw: number;
   readonly hh: number;
@@ -131,6 +134,8 @@ export class Renderer {
   private toneCache = new Map<string, number[]>();
   /** The item id the next committed pixels belong to. */
   currentId = 0;
+  /** Extra bits for objIds only, such as BASE_FLAG for a pedestal that stays put while its critter moves. */
+  objFlag = 0;
 
   constructor(
     public tw: number,
@@ -278,7 +283,7 @@ export class Renderer {
         if (!n) continue;
         main.d[y * W + x] = pack(mix(unpack(n), SHADOW, 0.62));
         this.ids[y * W + x] = this.currentId;
-        this.objIds[y * W + x] = this.currentId;
+        this.objIds[y * W + x] = this.currentId | this.objFlag;
       }
     for (let y = obj.y0; y <= obj.y1; y++)
       for (let x = obj.x0; x <= obj.x1; x++) {
@@ -286,7 +291,7 @@ export class Renderer {
         if (!v) continue;
         main.d[y * W + x] = v;
         this.ids[y * W + x] = this.currentId;
-        this.objIds[y * W + x] = this.currentId;
+        this.objIds[y * W + x] = this.currentId | this.objFlag;
       }
     obj.clear();
   }

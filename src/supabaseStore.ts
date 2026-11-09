@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Store } from './store';
-import type { AppData, Habit, Log, Pillar, TargetRow, YardItem } from './types';
+import type { AppData, CapsulePull, Habit, Log, Pillar, PullSource, TargetRow, YardItem } from './types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -23,12 +23,13 @@ export class SupabaseStore implements Store {
   ) {}
 
   async load(): Promise<AppData> {
-    const [settings, habits, logs, targets, yard] = await Promise.all([
+    const [settings, habits, logs, targets, yard, pulls] = await Promise.all([
       this.db.from('settings').select('started_on').maybeSingle(),
       this.db.from('habits').select('*').order('created_at'),
       this.db.from('logs').select('*').order('created_at'),
       this.db.from('targets').select('*'),
       this.db.from('yard_items').select('*').order('created_at'),
+      this.db.from('capsule_pulls').select('*').order('created_at'),
     ]);
     return {
       startedOn: check(settings)?.started_on ?? null,
@@ -59,6 +60,15 @@ export class SupabaseStore implements Store {
         decor: y.decor,
         price: y.price,
         createdAt: y.created_at,
+      })),
+      // Added later too: without the table, the collection starts empty.
+      pulls: (pulls.error ? [] : (pulls.data ?? [])).map((p) => ({
+        id: p.id,
+        critter: p.critter,
+        source: p.source as PullSource,
+        seeds: p.seeds,
+        glimmer: p.glimmer,
+        createdAt: p.created_at,
       })),
     };
   }
@@ -115,6 +125,20 @@ export class SupabaseStore implements Store {
 
   async deleteYardItem(id: string) {
     check(await this.db.from('yard_items').delete().eq('id', id));
+  }
+
+  async addPull(pull: CapsulePull) {
+    check(
+      await this.db.from('capsule_pulls').insert({
+        id: pull.id,
+        user_id: this.userId,
+        critter: pull.critter,
+        source: pull.source,
+        seeds: pull.seeds,
+        glimmer: pull.glimmer,
+        created_at: pull.createdAt,
+      }),
+    );
   }
 
   async upsertTargets(rows: TargetRow[]) {

@@ -3,6 +3,8 @@ import type { Pillar } from '../types';
 import { fillPoly, hash, type Renderer } from './engine';
 import { drawBigFountain, drawLamp, LEVEL_NAMES, LEVELS } from './levels';
 import { findDecor } from './decor';
+import { drawCritter } from '../collection/draw';
+import { findCritter } from '../collection/roster';
 
 export type Level = 1 | 2 | 3;
 
@@ -198,9 +200,15 @@ export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
     case 'seed':
       drawSeed(r, gx, gy);
       break;
-    case 'decor':
-      findDecor(item.id)?.draw(r, gx, gy);
+    case 'decor': {
+      // Critters placed in a yard are stored as decorations named "critter:<key>".
+      // "critter-base:<key>" is just its pedestal, the ground under it while it hops.
+      const base = item.id.startsWith('critter-base:');
+      const critter = item.id.startsWith('critter:') ? findCritter(item.id.slice(8)) : base ? findCritter(item.id.slice(13)) : undefined;
+      if (critter) drawCritter(r, critter, gx, gy, { pedestal: true, baseOnly: base });
+      else findDecor(item.id)?.draw(r, gx, gy);
       break;
+    }
     case 'plaza':
       // Spans a 3x3 block whose top corner is (gx, gy).
       drawBigFountain(r, gx, gy, item.earned);

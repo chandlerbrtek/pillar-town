@@ -47,6 +47,21 @@ export interface YardItem {
   createdAt: string;
 }
 
+/** Where a capsule came from. Wishes pick a specific missing critter with glimmer. */
+export type PullSource = 'seeds' | 'lamp' | 'golden' | 'wish';
+
+/** One capsule opened (or one wish granted). Collection, glimmer and pity are worked out from these. */
+export interface CapsulePull {
+  id: string;
+  critter: string;
+  source: PullSource;
+  /** Seeds spent on this pull. */
+  seeds: number;
+  /** Glimmer spent on this pull (wishes only). */
+  glimmer: number;
+  createdAt: string;
+}
+
 export interface AppData {
   /** The day the town was founded. Null until onboarding is done. */
   startedOn: string | null;
@@ -54,6 +69,7 @@ export interface AppData {
   logs: Log[];
   targets: TargetRow[];
   yard: YardItem[];
+  pulls: CapsulePull[];
 }
 
-export const EMPTY_DATA: AppData = { startedOn: null, habits: [], logs: [], targets: [], yard: [] };
+export const EMPTY_DATA: AppData = { startedOn: null, habits: [], logs: [], targets: [], yard: [], pulls: [] };

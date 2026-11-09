@@ -7,6 +7,7 @@ import { Onboarding } from './screens/Onboarding';
 import { Today } from './screens/Today';
 import { TownView } from './screens/TownView';
 import { Habits } from './screens/Habits';
+import { Collection } from './screens/Collection';
 import { Login } from './screens/Login';
 import { ToastProvider } from './Toast';
 import { isMuted, setMuted, sfx } from './sound';
@@ -38,7 +39,7 @@ function AuthGate() {
   return <Game store={store} account={session.user.email ?? 'your account'} />;
 }
 
-type Tab = 'today' | 'town' | 'habits';
+type Tab = 'today' | 'town' | 'collection' | 'habits';
 
 function Game({ store, account }: { store: Store; account?: string }) {
   const { data, error, clearError, actions } = useData(store);
@@ -63,18 +64,20 @@ function Game({ store, account }: { store: Store; account?: string }) {
           <Today data={data} actions={actions} />
         ) : tab === 'town' ? (
           <TownView data={data} actions={actions} />
+        ) : tab === 'collection' ? (
+          <Collection data={data} actions={actions} />
         ) : (
           <Habits data={data} actions={actions} storeKind={store.kind} account={account} />
         )}
       </main>
       {data.startedOn && (
         <nav className="tabs">
-          {(['today', 'town', 'habits'] as Tab[]).map((t) => (
+          {(['today', 'town', 'collection', 'habits'] as Tab[]).map((t) => (
             <button key={t} className={tab === t ? 'tab active' : 'tab'} onClick={() => {
                 setTab(t);
                 window.scrollTo(0, 0);
               }}>
-              {t === 'today' ? 'Today' : t === 'town' ? 'Town' : 'Habits'}
+              {t === 'today' ? 'Today' : t === 'town' ? 'Town' : t === 'collection' ? 'Collect' : 'Habits'}
             </button>
           ))}
         </nav>

@@ -17,6 +17,7 @@ const base = (logs: Log[], startedOn = '2026-11-02', yard: YardItem[] = []): App
   habits: [],
   logs,
   yard,
+  pulls: [],
   targets: [
     { pillar: 'vitality', weekStart: '2026-11-02', target: 3 },
     { pillar: 'mind', weekStart: '2026-11-02', target: 1 },

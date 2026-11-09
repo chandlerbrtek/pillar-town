@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { today, weekStart } from './dates';
 import { mergeTargets, type Store } from './store';
-import type { AppData, Habit, Log, Pillar, TargetRow, YardItem } from './types';
+import type { AppData, CapsulePull, Habit, Log, Pillar, TargetRow, YardItem } from './types';
 
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -83,6 +83,13 @@ export function useData(store: Store) {
     buyDecor(weekStart: string, cell: number, decor: string, price: number) {
       const item: YardItem = { id: uuid(), weekStart, cell, decor, price, createdAt: now() };
       save((d) => ({ ...d, yard: [...d.yard, item] }), () => store.addYardItem(item));
+    },
+
+    /** Records a capsule opened or a wish granted. */
+    addPull(pull: Omit<CapsulePull, 'id' | 'createdAt'>): CapsulePull {
+      const full: CapsulePull = { ...pull, id: uuid(), createdAt: now() };
+      save((d) => ({ ...d, pulls: [...d.pulls, full] }), () => store.addPull(full));
+      return full;
     },
 
     /** Removes a decoration; its seeds come back. */

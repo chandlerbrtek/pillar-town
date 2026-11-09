@@ -9,6 +9,7 @@ import type { Actions } from '../useData';
 import { DayCard } from './DayCard';
 import { WeekTargets } from './WeekTargets';
 import { YardCard } from './YardCard';
+import { CRITTERS, type Critter } from '../collection/roster';
 
 type Zoom = 'week' | 'year';
 
@@ -25,6 +26,10 @@ export function TownView({ data, actions }: { data: AppData; actions: Actions })
   const index = Math.max(0, shown ? town.weeks.findIndex((w) => w.weekStart === shown) : town.weeks.length - 1);
   const week = town.weeks[index];
   const yardFor = (start: string) => data.yard.filter((y) => y.weekStart === start);
+  const critters = useMemo(() => {
+    const keys = new Set(data.pulls.map((p) => p.critter));
+    return CRITTERS.filter((c) => keys.has(c.key));
+  }, [data.pulls]);
 
   const openWeek = (start: string) => {
     setShown(start);
@@ -60,7 +65,7 @@ export function TownView({ data, actions }: { data: AppData; actions: Actions })
               ›
             </button>
           </div>
-          <WeekIsland key={week.weekStart} week={week} yard={yardFor(week.weekStart)} town={town} actions={actions} />
+          <WeekIsland key={week.weekStart} week={week} yard={yardFor(week.weekStart)} town={town} critters={critters} actions={actions} />
           {week.isCurrent ? (
             <WeekTargets week={week} town={town} />
           ) : (
@@ -85,7 +90,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function WeekIsland({ week, yard, town, actions }: { week: WeekBlock; yard: YardItem[]; town: Town; actions: Actions }) {
+function WeekIsland({ week, yard, town, critters, actions }: { week: WeekBlock; yard: YardItem[]; town: Town; critters: Critter[]; actions: Actions }) {
   const key = JSON.stringify(week) + JSON.stringify(yard);
   const img = useMemo(() => renderWeek(week, 36, yard), [key]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -111,7 +116,7 @@ function WeekIsland({ week, yard, town, actions }: { week: WeekBlock; yard: Yard
       )}
       {selected === WEEK_YARD_ID && (
         <div className="zoom">
-          <YardCard weekStart={week.weekStart} isCurrent={week.isCurrent} items={yard} balance={town.seeds.balance} actions={actions} />
+          <YardCard weekStart={week.weekStart} isCurrent={week.isCurrent} items={yard} balance={town.seeds.balance} critters={critters} actions={actions} />
         </div>
       )}
     </section>

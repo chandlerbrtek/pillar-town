@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import type { Rendered } from './engine';
+import { BASE_FLAG, type Rendered } from './engine';
 import { paint } from './scenes';
 import { sfx } from '../sound';
 
@@ -13,7 +13,7 @@ export interface Transition {
   /** The picture without the moving building, for a hop where the building leaves the ground. */
   ground?: Rendered;
   /** Played in order: a building dropping in, or the lamp flickering on. */
-  steps: { id: number; kind: 'drop' | 'hop' | 'evolve' | 'flicker' }[];
+  steps: { id: number; kind: 'drop' | 'hop' | 'evolve' | 'flicker' | 'bob' }[];
 }
 
 interface Props {
@@ -26,7 +26,7 @@ interface Props {
   transition?: Transition | null;
 }
 
-const DURATION = { drop: 420, hop: 260, evolve: 1100, flicker: 560 };
+const DURATION = { drop: 420, hop: 260, evolve: 1100, flicker: 560, bob: 520 };
 const DUST = 0xffe8f4ff; // pale dust puff (ABGR)
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -35,20 +35,14 @@ const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce
 export function IslandCanvas({ img, selected, onSelect, label, maxScale = 3, transition }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const animating = useRef(false);
+  // Read by animations, which outlive the render that started them.
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   const paintSelected = () => {
     if (!ref.current) return;
-    if (selected === null) {
-      paint(ref.current, img);
-      return;
-    }
     const pixels = img.pixels.slice();
-    for (let i = 0; i < pixels.length; i++) {
-      if (img.ids[i] !== selected || !pixels[i]) continue;
-      const v = pixels[i];
-      const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255;
-      pixels[i] = ((255 << 24) | (Math.round(b + (72 - b) * 0.3) << 16) | (Math.round(g + (201 - g) * 0.3) << 8) | Math.round(r + (247 - r) * 0.3)) >>> 0;
-    }
+    tint(pixels, img.ids, selectedRef.current);
     paint(ref.current, { ...img, pixels });
   };
 
@@ -74,7 +68,9 @@ export function IslandCanvas({ img, selected, onSelect, label, maxScale = 3, tra
       const t = Math.min(1, (now - stepStart) / DURATION[step.kind]);
       if (step.kind === 'flicker') drawFlicker(out, from, img, step.id, t);
       else if (step.kind === 'evolve') drawEvolve(out, from, img, step.id, t);
+      else if (step.kind === 'bob') drawBob(out, transition.ground ?? from, img, step.id, t);
       else drawDrop(out, step.kind === 'hop' && transition.ground ? transition.ground : from, img, step.id, t, step.kind === 'hop' ? 6 : 16);
+      tint(out, img.ids, selectedRef.current);
       ctx.putImageData(frame, 0, 0);
       if (t < 1) {
         raf = requestAnimationFrame(tick);
@@ -114,6 +110,17 @@ export function IslandCanvas({ img, selected, onSelect, label, maxScale = 3, tra
   return <canvas ref={ref} className="island" style={{ maxWidth: img.width * maxScale }} onClick={tap} role="img" aria-label={label} />;
 }
 
+/** Tints the selected area gold, in place. */
+function tint(pixels: Uint32Array, ids: Uint16Array, selected: number | null) {
+  if (selected === null) return;
+  for (let i = 0; i < pixels.length; i++) {
+    if (ids[i] !== selected || !pixels[i]) continue;
+    const v = pixels[i];
+    const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255;
+    pixels[i] = ((255 << 24) | (Math.round(b + (72 - b) * 0.3) << 16) | (Math.round(g + (201 - g) * 0.3) << 8) | Math.round(r + (247 - r) * 0.3)) >>> 0;
+  }
+}
+
 /**
  * The previous picture with the new building falling onto it.
  * It drops from `height` pixels up, lands, bounces once, and kicks up a puff of dust.
@@ -127,7 +134,7 @@ function drawDrop(out: Uint32Array, from: Rendered, to: Rendered, id: number, t:
   else offset = -Math.round(Math.sin(((t - 0.6) / 0.4) * Math.PI) * Math.max(1, height * 0.15));
   let x0 = w, x1 = 0, y1 = 0;
   for (let i = 0; i < to.pixels.length; i++) {
-    if (to.objIds[i] !== id || !to.pixels[i]) continue;
+    if ((to.objIds[i] & ~BASE_FLAG) !== id || !to.pixels[i]) continue;
     const x = i % w, y = (i - x) / w;
     const ny = y + offset;
     if (ny >= 0 && ny < to.height) out[ny * w + x] = to.pixels[i];
@@ -206,5 +213,17 @@ function drawFlicker(out: Uint32Array, from: Rendered, to: Rendered, id: number,
   if (lit) return;
   for (let i = 0; i < out.length; i++) {
     if (to.objIds[i] === id || from.objIds[i] === id) out[i] = from.pixels[i];
+  }
+}
+
+/** A small idle hop: only the critter lifts and lands, its pedestal and the ground stay put. */
+function drawBob(out: Uint32Array, ground: Rendered, to: Rendered, id: number, t: number) {
+  const { width: w } = to;
+  out.set(ground.pixels);
+  const offset = -Math.round(Math.sin(t * Math.PI) * 4);
+  for (let i = 0; i < to.pixels.length; i++) {
+    if (to.objIds[i] !== id || !to.pixels[i]) continue;
+    const x = i % w, y = (i - x) / w, ny = y + offset;
+    if (ny >= 0 && ny < to.height) out[ny * w + x] = to.pixels[i];
   }
 }

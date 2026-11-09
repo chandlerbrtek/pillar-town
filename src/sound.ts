@@ -83,6 +83,76 @@ const PILLAR_NOTE: Record<Pillar, number> = {
 
 const up = (f: number, semitones: number) => f * Math.pow(2, semitones / 12);
 
+/** A short burst of filtered noise: clicks, thunks and pops. */
+function noise(at: number, duration: number, volume = 0.12, freq = 1800) {
+  const ac = audio();
+  if (!ac || !master) return;
+  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ac.createBufferSource(), filter = ac.createBiquadFilter(), gain = ac.createGain();
+  src.buffer = buf;
+  filter.type = 'bandpass';
+  filter.frequency.value = freq;
+  gain.gain.value = volume;
+  src.connect(filter).connect(gain).connect(master);
+  src.start(ac.currentTime + at);
+}
+
+type Tier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
+const REVEAL_RUNS: Record<Tier, number[]> = {
+  common: [523, 659, 784],
+  uncommon: [523, 659, 784, 880],
+  rare: [523, 659, 784, 1047],
+  epic: [523, 659, 784, 1047, 1319, 1568],
+  legendary: [523, 659, 784, 1047, 784, 1047, 1319, 1568, 2093],
+  mythic: [523, 659, 784, 1047, 1319, 1568, 2093, 1568, 2093, 2637, 3136],
+};
+
+/** Capsule machine sounds. */
+export const capsuleSfx = {
+  coin() {
+    tone(1318, 0, 0.06);
+    tone(1760, 0.06, 0.14);
+  },
+  crank() {
+    noise(0, 0.05, 0.18, 900);
+    tone(180, 0, 0.04, { type: 'square', volume: 0.05 });
+  },
+  drop() {
+    tone(220, 0, 0.18, { type: 'sine', volume: 0.25, slideTo: 60 });
+    noise(0, 0.08, 0.1, 400);
+  },
+  wobble() {
+    tone(660, 0, 0.05, { type: 'triangle', volume: 0.06 });
+  },
+  crack() {
+    noise(0, 0.12, 0.25, 2600);
+    tone(900, 0, 0.1, { type: 'square', volume: 0.08, slideTo: 300 });
+  },
+  reveal(rarity: Tier) {
+    const run = REVEAL_RUNS[rarity];
+    run.forEach((f, i) => tone(f, i * 0.07, 0.14, { type: 'square', volume: 0.08 }));
+    const end = run.length * 0.07;
+    if (rarity === 'epic' || rarity === 'legendary' || rarity === 'mythic') [2093, 2637, 3136].forEach((f, i) => tone(f, end + i * 0.05, 0.3, { type: 'triangle', volume: 0.06 }));
+    if (rarity === 'legendary' || rarity === 'mythic') {
+      for (const [f, at, d] of [[523, 0, 0.12], [659, 0.12, 0.12], [784, 0.24, 0.12], [1047, 0.36, 0.5]] as const) {
+        tone(f, end + 0.2 + at, d, { type: 'square', volume: 0.09 });
+        tone(f / 2, end + 0.2 + at, d, { type: 'triangle', volume: 0.09 });
+      }
+    }
+    if (rarity === 'mythic') {
+      // A rising shimmer after the fanfare.
+      const start = end + 1.0;
+      for (let i = 0; i < 12; i++) tone(up(1047, i * 2), start + i * 0.04, 0.2, { type: 'triangle', volume: 0.05 });
+      tone(2093, start + 0.5, 0.8, { type: 'triangle', volume: 0.08 });
+    }
+  },
+  wish() {
+    [1568, 2093, 2637].forEach((f, i) => tone(f, i * 0.08, 0.3, { type: 'triangle', volume: 0.07 }));
+  },
+};
+
 export const sfx = {
   /** First habit in a pillar today: a building pops into place. */
   build(p: Pillar) {
