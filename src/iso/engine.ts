@@ -314,7 +314,10 @@ export class Renderer {
 
   dashedDiamond(gx: number, gy: number, color: string) {
     const { P, main, scratch } = this;
-    const v = pack(hex(color)), ins = 0.12;
+    // Dashes in the pillar's color. A color too close to the grass (Vitality's green) swaps to a bright lime so it still shows.
+    const c0 = hex(color), grass = hex('#5aa04a');
+    const nearGrass = Math.hypot(c0[0] - grass[0], c0[1] - grass[1], c0[2] - grass[2]) < 60;
+    const v = pack(nearGrass ? hex('#c8f560') : c0), ins = 0.12;
     const c: Pt[] = [P(gx + ins, gy + ins), P(gx + 1 - ins, gy + ins), P(gx + 1 - ins, gy + 1 - ins), P(gx + ins, gy + 1 - ins)];
     for (let i = 0; i < 4; i++) line(scratch, c[i], c[(i + 1) % 4], 1);
     for (let y = scratch.y0; y <= scratch.y1; y++)

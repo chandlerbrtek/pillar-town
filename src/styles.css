@@ -94,6 +94,9 @@ p {
 }
 
 .topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -598,4 +601,17 @@ button:focus-visible {
   padding: 10px;
   border-top: var(--px) solid var(--edge);
   background: var(--bg);
+}
+
+.sound-toggle {
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  color: var(--muted);
+  font-family: 'Silkscreen', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.sound-toggle[aria-pressed='true'] {
+  color: var(--accent);
 }

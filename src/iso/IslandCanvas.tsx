@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Rendered } from './engine';
 import { paint } from './scenes';
+import { sfx } from '../sound';
 
 interface Props {
   img: Rendered;
@@ -36,7 +37,9 @@ export function IslandCanvas({ img, selected, onSelect, label, maxScale = 3 }: P
     const x = Math.floor(((e.clientX - rect.left) / rect.width) * img.width);
     const y = Math.floor(((e.clientY - rect.top) / rect.height) * img.height);
     const id = img.ids[y * img.width + x] ?? 0;
-    onSelect(id === 0 || id === selected ? null : id);
+    const next = id === 0 || id === selected ? null : id;
+    if (next !== null) sfx.tap();
+    onSelect(next);
   };
 
   return <canvas ref={ref} className="island" style={{ maxWidth: img.width * maxScale }} onClick={tap} role="img" aria-label={label} />;

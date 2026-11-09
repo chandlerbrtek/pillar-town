@@ -9,6 +9,7 @@ import { TownView } from './screens/TownView';
 import { Habits } from './screens/Habits';
 import { Login } from './screens/Login';
 import { ToastProvider } from './Toast';
+import { isMuted, setMuted, sfx } from './sound';
 
 const localStore = new LocalStore();
 
@@ -45,6 +46,7 @@ function Game({ store, account }: { store: Store; account?: string }) {
     <div className="app">
       <header className="topbar">
         <h1>PillarTown</h1>
+        <SoundToggle />
       </header>
       {error && <ErrorBanner message={error} onClose={clearError} />}
       <main className="content">
@@ -71,6 +73,21 @@ function Game({ store, account }: { store: Store; account?: string }) {
         </nav>
       )}
     </div>
+  );
+}
+
+function SoundToggle() {
+  const [muted, setMutedState] = useState(isMuted);
+  const toggle = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+    if (!next) sfx.enabled();
+  };
+  return (
+    <button className="sound-toggle" onClick={toggle} aria-pressed={!muted} aria-label={muted ? 'Turn sound on' : 'Turn sound off'}>
+      {muted ? 'Sound: off' : 'Sound: on'}
+    </button>
   );
 }
 

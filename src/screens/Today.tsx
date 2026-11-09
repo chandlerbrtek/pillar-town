@@ -4,7 +4,8 @@ import { PILLAR_INFO } from '../pillars';
 import { buildingName, levelFor, type Level } from '../iso/buildings';
 import { DayCard } from './DayCard';
 import { PillarIcon } from '../iso/IsoIcon';
-import { deriveTown, variantFor } from '../town';
+import { BALANCED_PILLARS, deriveTown, variantFor } from '../town';
+import { sfx } from '../sound';
 import { useToast } from '../Toast';
 import { PILLARS, type AppData, type Habit } from '../types';
 import type { Actions } from '../useData';
@@ -25,6 +26,7 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
     const after = before + 1;
     const level = levelFor(after) as Level;
     const entry = actions.logHabit(habit, day);
+    playLogSounds(habit, before, after);
     const name = buildingName(habit.pillar, level);
     const message = before === 0 ? `Built a ${name}!` : after <= 3 ? `Upgraded to a ${name}!` : `${name} · ${PILLAR_INFO[habit.pillar].name} ×${after}`;
     toast({
@@ -34,13 +36,37 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
           <span>{message}</span>
         </>
       ),
-      action: { label: 'Undo', run: () => actions.removeLog(entry.id) },
+      action: {
+        label: 'Undo',
+        run: () => {
+          sfx.undo();
+          actions.removeLog(entry.id);
+        },
+      },
     });
+  };
+
+  /** The building sound right away, then a chime if the lamp lights and a fanfare if the week becomes full. */
+  const playLogSounds = (habit: Habit, before: number, after: number) => {
+    if (before === 0) sfx.build(habit.pillar);
+    else if (after <= 3) sfx.upgrade(habit.pillar, after as 2 | 3);
+    else sfx.extra(habit.pillar);
+
+    const lampLights = before === 0 && dayBlock.pillarsTouched + 1 === BALANCED_PILLARS;
+    if (lampLights) setTimeout(sfx.lampLit, 350);
+
+    const targets = PILLARS.filter((p) => week.progress[p].target > 0);
+    const fullAfter =
+      targets.length > 0 &&
+      targets.every((p) => week.progress[p].count + (p === habit.pillar ? 1 : 0) >= week.progress[p].target);
+    if (week.isCurrent && !week.fullWeek && fullAfter) setTimeout(sfx.fullWeek, lampLights ? 900 : 400);
   };
 
   const unlog = (habit: Habit) => {
     const last = logsForDay.filter((l) => l.habitId === habit.id).at(-1);
-    if (last) actions.removeLog(last.id);
+    if (!last) return;
+    sfx.undo();
+    actions.removeLog(last.id);
   };
 
   return (
