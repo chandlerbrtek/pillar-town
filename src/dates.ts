@@ -34,3 +34,15 @@ export function shortDate(day: string): string {
   const d = parseDay(day);
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** "Thursday, Nov 12" */
+export function longDate(day: string): string {
+  return `${WEEKDAYS[parseDay(day).getDay()]}, ${shortDate(day)}`;
+}
+
+/** "Thu" */
+export function weekdayShort(day: string): string {
+  return WEEKDAYS[parseDay(day).getDay()].slice(0, 3);
+}

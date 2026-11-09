@@ -208,26 +208,6 @@ button:focus-visible {
   outline-offset: 0;
 }
 
-.segmented {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: var(--px) solid var(--edge);
-}
-
-.segmented button {
-  background: var(--panel);
-  border: none;
-  padding: 10px;
-  font-family: 'Silkscreen', monospace;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.segmented button.on {
-  background: var(--panel-2);
-  color: var(--accent);
-}
-
 .badge {
   font-size: 12px;
   padding: 1px 6px;
@@ -612,4 +592,10 @@ button:focus-visible {
   color: var(--accent);
   text-decoration: underline;
   font-size: 14px;
+}
+
+.zoom {
+  padding: 10px;
+  border-top: var(--px) solid var(--edge);
+  background: var(--bg);
 }

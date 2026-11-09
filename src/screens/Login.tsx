@@ -38,9 +38,9 @@ export function Login() {
       <main className="content center-screen">
         <section className="panel login">
           <div className="login-art">
-            <IsoIcon item={{ kind: 'bond', variant: 0 }} size={56} />
-            <IsoIcon item={{ kind: 'vitality', variant: 0 }} size={56} />
-            <IsoIcon item={{ kind: 'mind', variant: 0 }} size={56} />
+            <IsoIcon item={{ kind: 'bond', level: 3 }} size={56} />
+            <IsoIcon item={{ kind: 'vitality', level: 3 }} size={56} />
+            <IsoIcon item={{ kind: 'mind', level: 3 }} size={56} />
           </div>
           <h1>PillarTown</h1>
           <form onSubmit={submit} className="stack">

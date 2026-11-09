@@ -23,8 +23,25 @@ export interface PillarProgress {
   target: number;
 }
 
+/** How many pillars in one day light that day's lamp. */
+export const BALANCED_PILLARS = 5;
+
+export interface DayBlock {
+  day: string;
+  /** False for days before the town started or after today. */
+  active: boolean;
+  /** Habits logged per pillar that day. */
+  counts: Record<Pillar, number>;
+  /** The habits behind each pillar's count, by name. */
+  habits: Record<Pillar, { name: string; count: number }[]>;
+  pillarsTouched: number;
+  balanced: boolean;
+}
+
 export interface WeekBlock {
   weekStart: string;
+  /** Monday to Sunday. */
+  days: DayBlock[];
   isCurrent: boolean;
   /** The first week can be partial, so it never wilts. */
   isWarmup: boolean;
@@ -140,8 +157,31 @@ export function deriveTown(data: AppData, todayDay: string): Town {
       }
     }
 
+    const days: DayBlock[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(w, i);
+      const counts = perPillar(() => 0);
+      const named = perPillar<Map<string, number>>(() => new Map());
+      for (const log of logs) {
+        if (log.day !== day) continue;
+        counts[log.pillar]++;
+        const name = (log.habitId && habitNames.get(log.habitId)) || 'A habit';
+        named[log.pillar].set(name, (named[log.pillar].get(name) ?? 0) + 1);
+      }
+      const pillarsTouched = PILLARS.filter((p) => counts[p] > 0).length;
+      days.push({
+        day,
+        active: day >= data.startedOn && day <= todayDay,
+        counts,
+        habits: Object.fromEntries(PILLARS.map((p) => [p, [...named[p]].map(([name, count]) => ({ name, count }))])) as DayBlock['habits'],
+        pillarsTouched,
+        balanced: pillarsTouched >= BALANCED_PILLARS,
+      });
+    }
+
     weeks.push({
       weekStart: w,
+      days,
       isCurrent,
       isWarmup,
       buildings: logs.map((log) => ({

@@ -78,4 +78,23 @@ describe('deriveTown', () => {
     expect(town.weeks[0].fullWeek).toBe(true);
     expect(town.weakest).toBeNull();
   });
+
+  it('breaks each week into days with counts per pillar', () => {
+    const logs = [log('mind', '2026-11-03'), log('mind', '2026-11-03'), log('vitality', '2026-11-03'), log('heart', '2026-11-04')];
+    const town = deriveTown(base(logs), '2026-11-04');
+    const [mon, tue, wed, thu] = town.weeks[0].days;
+    expect(mon.day).toBe('2026-11-02');
+    expect(tue.counts.mind).toBe(2);
+    expect(tue.counts.vitality).toBe(1);
+    expect(tue.pillarsTouched).toBe(2);
+    expect(wed.counts.heart).toBe(1);
+    expect(thu.active).toBe(false);
+  });
+
+  it('lights the lamp on a day with 5 or more pillars', () => {
+    const pillars: Pillar[] = ['mind', 'vitality', 'heart', 'spirit', 'bond'];
+    const town = deriveTown(base(pillars.map((p) => log(p, '2026-11-03'))), '2026-11-04');
+    expect(town.weeks[0].days[1].balanced).toBe(true);
+    expect(town.weeks[0].days[2].balanced).toBe(false);
+  });
 });

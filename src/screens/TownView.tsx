@@ -1,29 +1,34 @@
-import { useMemo, useState } from 'react';
-import { shortDate, today } from '../dates';
-import { PILLAR_INFO } from '../pillars';
-import { BUILDING_NAMES, type IsoItem } from '../iso/buildings';
+import { Fragment, useMemo, useState } from 'react';
+import { shortDate, today, weekdayShort } from '../dates';
 import { IslandCanvas } from '../iso/IslandCanvas';
+import { renderWeek, WEEK_GARDEN_ID, WEEK_PLAZA_ID } from '../iso/scenes';
 import { deriveTown, type WeekBlock } from '../town';
 import { PILLARS, type AppData } from '../types';
+import { DayCard } from './DayCard';
+import { WeekTargets } from './WeekTargets';
 
 export function TownView({ data }: { data: AppData }) {
   const town = useMemo(() => deriveTown(data, today()), [data]);
   const weeks = [...town.weeks].reverse();
 
-  const buildings = town.weeks.reduce((n, w) => n + w.buildings.length, 0);
-  const wilted = PILLARS.reduce((n, p) => n + town.openWilted[p], 0);
+  const buildings = town.weeks.reduce((n, w) => n + w.days.reduce((m, d) => m + d.pillarsTouched, 0), 0);
+  const litDays = town.weeks.reduce((n, w) => n + w.days.filter((d) => d.balanced).length, 0);
   const fullWeeks = town.weeks.filter((w) => w.fullWeek && !w.isCurrent).length;
+  const wilted = PILLARS.reduce((n, p) => n + town.openWilted[p], 0);
 
   return (
     <div className="stack">
       <section className="stats">
         <Stat label="Buildings" value={buildings} />
-        <Stat label="Weeks" value={town.weeks.length} />
+        <Stat label="Lamps lit" value={litDays} />
         <Stat label="Full weeks" value={fullWeeks} />
         <Stat label="Wilted" value={wilted} />
       </section>
       {weeks.map((w) => (
-        <Block key={w.weekStart} week={w} />
+        <Fragment key={w.weekStart}>
+          <WeekIsland week={w} />
+          {w.isCurrent && <WeekTargets week={w} town={town} />}
+        </Fragment>
       ))}
     </div>
   );
@@ -38,47 +43,12 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-interface Tile {
-  item: IsoItem;
-  detail: string;
-}
-
-function Block({ week }: { week: WeekBlock }) {
+function WeekIsland({ week }: { week: WeekBlock }) {
+  const key = JSON.stringify(week);
+  const img = useMemo(() => renderWeek(week), [key]);
   const [selected, setSelected] = useState<number | null>(null);
-
-  const tiles: Tile[] = [];
-  if (week.fullWeek) {
-    tiles.push({
-      item: { kind: 'fountain' },
-      detail: week.isCurrent ? 'Fountain: every target met this week!' : 'Fountain: a full week, every target met',
-    });
-  }
-  for (const b of week.buildings) {
-    tiles.push({
-      item: { kind: b.pillar, variant: b.variant },
-      detail: `${BUILDING_NAMES[b.pillar]} · ${b.habitName} · ${shortDate(b.day)}`,
-    });
-  }
-  for (const s of week.wilted) {
-    const name = PILLAR_INFO[s.pillar].name;
-    tiles.push(
-      s.restoredIn
-        ? { item: { kind: 'blossom' }, detail: `Restored ${name} spot · missed this week, bloomed again the week of ${shortDate(s.restoredIn)}` }
-        : { item: { kind: 'wilted' }, detail: `Wilted ${name} spot · go past your ${name} target in a later week to restore it` },
-    );
-  }
-  if (week.isCurrent) {
-    for (const p of PILLARS) {
-      const open = Math.max(0, week.progress[p].target - week.progress[p].count);
-      for (let i = 0; i < open; i++) {
-        const name = PILLAR_INFO[p].name;
-        tiles.push({ item: { kind: 'lot', pillar: p }, detail: `Empty ${name} lot · log a ${name} habit to build here` });
-      }
-    }
-  }
-
   const title = week.isCurrent ? 'This week' : `Week of ${shortDate(week.weekStart)}`;
-  const detail = selected !== null ? tiles[selected]?.detail : null;
+  const selectedDay = selected && selected <= 7 ? week.days[selected - 1] : null;
 
   return (
     <section className={week.isCurrent ? 'block current' : 'block'}>
@@ -90,9 +60,33 @@ function Block({ week }: { week: WeekBlock }) {
         </div>
       </div>
       <div className="sky">
-        <IslandCanvas items={tiles.map((t) => t.item)} selected={selected} onSelect={setSelected} label={`${title}: ${tiles.length} spots`} />
+        <IslandCanvas img={img} selected={selected} onSelect={setSelected} label={`${title}: seven day blocks around a plaza`} />
       </div>
-      <p className="tile-detail">{detail ?? (tiles.length ? 'Tap a building to see what it is.' : 'Nothing built this week.')}</p>
+      <p className="tile-detail">{describe(week, selected)}</p>
+      {selectedDay && (
+        <div className="zoom">
+          <DayCard day={selectedDay} />
+        </div>
+      )}
     </section>
   );
+}
+
+function describe(week: WeekBlock, id: number | null): string {
+  if (id === null) return 'Days run clockwise from the top corner, Mon to Sun. Tap a day to see it up close.';
+  if (id === WEEK_PLAZA_ID)
+    return week.fullWeek
+      ? 'Grand fountain: every weekly target met.'
+      : week.isCurrent
+        ? 'The plaza earns a grand fountain when every weekly target is met.'
+        : 'Empty pedestal: not every target was met this week.';
+  if (id === WEEK_GARDEN_ID) {
+    const restored = week.wilted.filter((s) => s.restoredIn).length;
+    const open = week.wilted.length - restored;
+    if (week.wilted.length === 0) return week.isCurrent ? 'Garden: missed targets wilt here when the week ends.' : 'Garden: no missed targets this week.';
+    return `Garden: ${week.wilted.length} missed ${week.wilted.length === 1 ? 'target' : 'targets'}. ${restored} bloomed again, ${open} still wilted.`;
+  }
+  const day = week.days[id - 1];
+  if (!day.active) return `${weekdayShort(day.day)} ${shortDate(day.day)}: ${day.day > today() ? 'still to come.' : 'before your town began.'}`;
+  return `${weekdayShort(day.day)} ${shortDate(day.day)}: ${day.pillarsTouched} of 8 pillars${day.balanced ? ', lamp lit' : ''}.`;
 }

@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useRef } from 'react';
-import type { IsoItem } from './buildings';
-import { paint, renderIsland } from './scenes';
+import { useEffect, useRef } from 'react';
+import type { Rendered } from './engine';
+import { paint } from './scenes';
 
 interface Props {
-  items: IsoItem[];
+  img: Rendered;
+  /** The tap id currently highlighted, or null. */
   selected: number | null;
-  onSelect: (index: number | null) => void;
+  onSelect: (id: number | null) => void;
   label: string;
+  maxScale?: number;
 }
 
-/** A week drawn as a floating island. Tapping a building selects it. */
-export function IslandCanvas({ items, selected, onSelect, label }: Props) {
-  const key = JSON.stringify(items);
-  const img = useMemo(() => renderIsland(items), [key]);
+/** A rendered island. Tapping returns the id of what was tapped; the selected area is tinted gold. */
+export function IslandCanvas({ img, selected, onSelect, label, maxScale = 3 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -21,14 +21,12 @@ export function IslandCanvas({ items, selected, onSelect, label }: Props) {
       paint(ref.current, img);
       return;
     }
-    // Tint the selected item's pixels gold.
     const pixels = img.pixels.slice();
-    const id = selected + 1;
     for (let i = 0; i < pixels.length; i++) {
-      if (img.ids[i] !== id || !pixels[i]) continue;
+      if (img.ids[i] !== selected || !pixels[i]) continue;
       const v = pixels[i];
       const r = v & 255, g = (v >> 8) & 255, b = (v >> 16) & 255;
-      pixels[i] = ((255 << 24) | (Math.round(b + (72 - b) * 0.35) << 16) | (Math.round(g + (201 - g) * 0.35) << 8) | Math.round(r + (247 - r) * 0.35)) >>> 0;
+      pixels[i] = ((255 << 24) | (Math.round(b + (72 - b) * 0.3) << 16) | (Math.round(g + (201 - g) * 0.3) << 8) | Math.round(r + (247 - r) * 0.3)) >>> 0;
     }
     paint(ref.current, { ...img, pixels });
   }, [img, selected]);
@@ -38,17 +36,8 @@ export function IslandCanvas({ items, selected, onSelect, label }: Props) {
     const x = Math.floor(((e.clientX - rect.left) / rect.width) * img.width);
     const y = Math.floor(((e.clientY - rect.top) / rect.height) * img.height);
     const id = img.ids[y * img.width + x] ?? 0;
-    onSelect(id === 0 || id - 1 === selected ? null : id - 1);
+    onSelect(id === 0 || id === selected ? null : id);
   };
 
-  return (
-    <canvas
-      ref={ref}
-      className="island"
-      style={{ maxWidth: img.width * 3 }}
-      onClick={tap}
-      role="img"
-      aria-label={label}
-    />
-  );
+  return <canvas ref={ref} className="island" style={{ maxWidth: img.width * maxScale }} onClick={tap} role="img" aria-label={label} />;
 }

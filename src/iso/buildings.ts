@@ -1,24 +1,25 @@
 import { PILLAR_INFO } from '../pillars';
 import type { Pillar } from '../types';
 import { fillPoly, hash, line, type Renderer } from './engine';
+import { drawBigFountain, drawLamp, LEVEL_NAMES, LEVELS } from './levels';
+
+export type Level = 1 | 2 | 3;
 
 export type IsoItem =
-  | { kind: Pillar; variant: number }
+  | { kind: Pillar; level: Level; variant?: number }
+  | { kind: 'lamp'; lit: boolean }
+  | { kind: 'plaza'; earned: boolean }
   | { kind: 'wilted' }
   | { kind: 'blossom' }
   | { kind: 'fountain' }
   | { kind: 'lot'; pillar: Pillar };
 
-export const BUILDING_NAMES: Record<Pillar, string> = {
-  vitality: 'Tree',
-  mind: 'Library',
-  heart: 'Flower pond',
-  spirit: 'Shrine gate',
-  bond: 'House',
-  craft: 'Clock tower',
-  fortune: 'Market stall',
-  harmony: 'Garden',
-};
+/** Building level for a number of habits in one pillar on one day. */
+export const levelFor = (count: number): Level | 0 => (count <= 0 ? 0 : count >= 3 ? 3 : (count as Level));
+
+export function buildingName(pillar: Pillar, level: Level): string {
+  return LEVEL_NAMES[pillar][level - 1];
+}
 
 const WALL = '#f0d9a8';
 const pick = (list: string[], v: number) => list[v % list.length];
@@ -194,11 +195,21 @@ export function drawItem(r: Renderer, item: IsoItem, gx: number, gy: number) {
     case 'lot':
       drawLot(r, gx, gy, item.pillar);
       break;
-    default:
-      PILLAR_DRAW[item.kind](r, gx, gy, item.variant);
+    case 'lamp':
+      drawLamp(r, gx, gy, item.lit);
+      break;
+    case 'plaza':
+      // Spans a 3x3 block whose top corner is (gx, gy).
+      drawBigFountain(r, gx, gy, item.earned);
+      break;
+    default: {
+      const custom = LEVELS[item.kind][item.level - 1];
+      if (custom) custom(r, gx, gy);
+      else PILLAR_DRAW[item.kind](r, gx, gy, item.variant ?? 0);
+    }
   }
   r.commit();
 }
 
 /** How tall the tallest item can get, in world units, so scenes leave room above. */
-export const MAX_ITEM_HEIGHT = 1.6;
+export const MAX_ITEM_HEIGHT = 1.8;
