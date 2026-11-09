@@ -26,7 +26,19 @@ function AuthGate() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
   useEffect(() => {
-    supabase!.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase!.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        // A saved login can outlive its account, for example after the user is deleted in Supabase.
+        // Check with the server, and start over at the login screen if the account is gone.
+        const { error } = await supabase!.auth.getUser();
+        if (error && [401, 403, 404].includes(error.status ?? 0)) {
+          await supabase!.auth.signOut({ scope: 'local' });
+          setSession(null);
+          return;
+        }
+      }
+      setSession(data.session);
+    });
     const { data } = supabase!.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
