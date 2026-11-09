@@ -97,6 +97,19 @@ export const sfx = {
     steps.forEach((s, i) => tone(up(f, s), i * 0.06, 0.12, { type: 'square', volume: 0.09 }));
     if (level === 3) tone(up(f, 19), steps.length * 0.06, 0.3, { type: 'triangle', volume: 0.12 });
   },
+  /** A building evolves: notes trade back and forth faster and faster, then the upgrade run. Matches the evolution flash. */
+  evolve(p: Pillar, level: 2 | 3) {
+    const f = PILLAR_NOTE[p];
+    let at = 0;
+    for (let i = 0; i < 12; i++) {
+      const gap = 0.11 - i * 0.007;
+      tone(i % 2 ? up(f, 7) : f, at, gap * 0.9, { type: 'square', volume: 0.06 });
+      at += gap;
+    }
+    const steps = level === 3 ? [0, 4, 7, 12, 16] : [0, 4, 7, 12];
+    steps.forEach((s, i) => tone(up(f, s), 0.88 + i * 0.05, 0.12, { type: 'square', volume: 0.09 }));
+    tone(up(f, level === 3 ? 19 : 16), 0.88 + steps.length * 0.05, 0.35, { type: 'triangle', volume: 0.12 });
+  },
   /** Another habit on a building that is already at the top level: a coin-like blip. */
   extra(p: Pillar) {
     const f = up(PILLAR_NOTE[p], 12);

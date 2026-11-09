@@ -49,11 +49,12 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
   /** The building sound right away, then a chime if the lamp lights and a fanfare if the week becomes full. */
   const playLogSounds = (habit: Habit, before: number, after: number) => {
     if (before === 0) sfx.build(habit.pillar);
-    else if (after <= 3) sfx.upgrade(habit.pillar, after as 2 | 3);
+    else if (after <= 3) sfx.evolve(habit.pillar, after as 2 | 3);
     else sfx.extra(habit.pillar);
 
     const lampLights = before === 0 && dayBlock.pillarsTouched + 1 === BALANCED_PILLARS;
-    if (lampLights) setTimeout(sfx.lampLit, 350);
+    // Lines up with the lamp flicker, which starts after the building lands.
+    if (lampLights) setTimeout(sfx.lampLit, 420);
 
     const targets = PILLARS.filter((p) => week.progress[p].target > 0);
     const fullAfter =
@@ -71,7 +72,7 @@ export function Today({ data, actions }: { data: AppData; actions: Actions }) {
 
   return (
     <div className="stack">
-      <DayCard day={dayBlock} title={`Today · ${longDate(day)}`} />
+      <DayCard day={dayBlock} title={`Today · ${longDate(day)}`} pinnable />
 
       {PILLARS.map((p) => {
         const list = habits.filter((h) => h.pillar === p);

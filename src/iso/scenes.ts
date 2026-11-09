@@ -86,7 +86,7 @@ function dayThings(day: DayBlock, ox: number, oy: number, id: (p: Pillar | 'lamp
 }
 
 /** One day's 3x3 block as a small floating island. Open lots show as dashed outlines. */
-export function renderDay(day: DayBlock, tw = 64): Rendered {
+export function renderDay(day: DayBlock, tw = 64, opts: { hideLot?: Pillar } = {}): Rendered {
   const r = makeIsland(3, 3, tw);
   islandBase(r, 3, 3);
   const at = new Map<string, number>(PILLARS.map((p) => [PILLAR_POS[p].join(','), dayPillarId(p)]));
@@ -96,9 +96,10 @@ export function renderDay(day: DayBlock, tw = 64): Rendered {
       r.currentId = center ? DAY_LAMP_ID : at.get(`${x},${y}`)!;
       r.tile(x, y, center ? 'road' : 'grass');
     }
-  for (const p of PILLARS) if (!day.counts[p]) r.dashedDiamond(PILLAR_POS[p][0], PILLAR_POS[p][1], PILLAR_INFO[p].color);
+  for (const p of PILLARS) if (!day.counts[p] && p !== opts.hideLot) r.dashedDiamond(PILLAR_POS[p][0], PILLAR_POS[p][1], PILLAR_INFO[p].color);
   drawThings(r, dayThings(day, 0, 0, (k) => (k === 'lamp' ? DAY_LAMP_ID : dayPillarId(k))));
-  return r.result();
+  // Full frame, so every render of a day is the same size and frames can be animated between them.
+  return r.result(4, false);
 }
 
 /** A week as one island: seven day blocks around a plaza, plus the wilt and restore garden. */

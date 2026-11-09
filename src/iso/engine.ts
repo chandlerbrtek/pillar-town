@@ -109,7 +109,10 @@ export interface Rendered {
   width: number;
   height: number;
   pixels: Uint32Array;
+  /** Tap areas: buildings and the ground tiles under them. */
   ids: Uint16Array;
+  /** Buildings only, without their ground. Used to animate a single building. */
+  objIds: Uint16Array;
 }
 
 /**
@@ -123,6 +126,7 @@ export class Renderer {
   main: Buf;
   obj: Buf;
   ids: Uint16Array;
+  objIds: Uint16Array;
   private scratch: Buf;
   private toneCache = new Map<string, number[]>();
   /** The item id the next committed pixels belong to. */
@@ -142,6 +146,7 @@ export class Renderer {
     this.obj = new Buf(W, H);
     this.scratch = new Buf(W, H);
     this.ids = new Uint16Array(W * H);
+    this.objIds = new Uint16Array(W * H);
   }
 
   P = (x: number, y: number, z = 0): Pt => [Math.round(this.ox + (x - y) * this.hw), Math.round(this.oy + (x + y) * this.hh - z * this.zs)];
@@ -273,6 +278,7 @@ export class Renderer {
         if (!n) continue;
         main.d[y * W + x] = pack(mix(unpack(n), SHADOW, 0.62));
         this.ids[y * W + x] = this.currentId;
+        this.objIds[y * W + x] = this.currentId;
       }
     for (let y = obj.y0; y <= obj.y1; y++)
       for (let x = obj.x0; x <= obj.x1; x++) {
@@ -280,6 +286,7 @@ export class Renderer {
         if (!v) continue;
         main.d[y * W + x] = v;
         this.ids[y * W + x] = this.currentId;
+        this.objIds[y * W + x] = this.currentId;
       }
     obj.clear();
   }
@@ -325,9 +332,10 @@ export class Renderer {
     scratch.clear();
   }
 
-  /** Crops the scene to what was drawn, plus a margin. */
-  result(margin = 4): Rendered {
+  /** Crops the scene to what was drawn, plus a margin. With crop off, returns the full frame so sizes stay fixed. */
+  result(margin = 4, crop = true): Rendered {
     const { W, H, main } = this;
+    if (!crop) return { width: W, height: H, pixels: main.d.slice(), ids: this.ids.slice(), objIds: this.objIds.slice() };
     let bx0 = W, by0 = H, bx1 = 0, by1 = 0;
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++)
@@ -337,15 +345,16 @@ export class Renderer {
           if (y < by0) by0 = y;
           if (y > by1) by1 = y;
         }
-    if (bx1 < bx0) return { width: 1, height: 1, pixels: new Uint32Array(1), ids: new Uint16Array(1) };
+    if (bx1 < bx0) return { width: 1, height: 1, pixels: new Uint32Array(1), ids: new Uint16Array(1), objIds: new Uint16Array(1) };
     const cw = bx1 - bx0 + 1 + 2 * margin, ch = by1 - by0 + 1 + 2 * margin;
-    const pixels = new Uint32Array(cw * ch), ids = new Uint16Array(cw * ch);
+    const pixels = new Uint32Array(cw * ch), ids = new Uint16Array(cw * ch), objIds = new Uint16Array(cw * ch);
     for (let y = by0; y <= by1; y++)
       for (let x = bx0; x <= bx1; x++) {
         const o = (y - by0 + margin) * cw + (x - bx0 + margin);
         pixels[o] = main.d[y * W + x];
         ids[o] = this.ids[y * W + x];
+        objIds[o] = this.objIds[y * W + x];
       }
-    return { width: cw, height: ch, pixels, ids };
+    return { width: cw, height: ch, pixels, ids, objIds };
   }
 }
