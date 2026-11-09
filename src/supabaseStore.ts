@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Store } from './store';
-import type { AppData, CapsulePull, Habit, Log, Pillar, PullSource, TargetRow, YardItem } from './types';
+import type { AppData, CapsulePull, Habit, Log, Pillar, PullSource, TargetRow, YardItem, Size } from './types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -39,6 +39,9 @@ export class SupabaseStore implements Store {
         pillar: h.pillar as Pillar,
         archived: h.archived,
         createdAt: h.created_at,
+        small: h.small ?? undefined,
+        usual: h.usual ?? undefined,
+        big: h.big ?? undefined,
       })),
       logs: (check(logs) ?? []).map((l) => ({
         id: l.id,
@@ -46,6 +49,7 @@ export class SupabaseStore implements Store {
         pillar: l.pillar as Pillar,
         day: l.day,
         createdAt: l.created_at,
+        size: (l.size ?? 'usual') as Size,
       })),
       targets: (check(targets) ?? []).map((t) => ({
         pillar: t.pillar as Pillar,
@@ -87,6 +91,9 @@ export class SupabaseStore implements Store {
           pillar: h.pillar,
           archived: h.archived,
           created_at: h.createdAt,
+          small: h.small ?? null,
+          usual: h.usual ?? null,
+          big: h.big ?? null,
         })),
       ),
     );
@@ -101,12 +108,17 @@ export class SupabaseStore implements Store {
         pillar: log.pillar,
         day: log.day,
         created_at: log.createdAt,
+        size: log.size ?? 'usual',
       }),
     );
   }
 
   async deleteLog(id: string) {
     check(await this.db.from('logs').delete().eq('id', id));
+  }
+
+  async setLogSize(id: string, size: Size) {
+    check(await this.db.from('logs').update({ size }).eq('id', id));
   }
 
   async addYardItem(item: YardItem) {

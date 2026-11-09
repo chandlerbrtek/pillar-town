@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { today, weekStart } from './dates';
 import { mergeTargets, type Store } from './store';
-import type { AppData, CapsulePull, Habit, Log, Pillar, TargetRow, YardItem } from './types';
+import { targetFor } from './town';
+import type { AppData, CapsulePull, Habit, Log, Pillar, Size, TargetRow, YardItem } from './types';
+
+/** A habit as chosen in onboarding or the Habits tab, before it has an id. */
+export type NewHabit = Pick<Habit, 'name' | 'pillar' | 'small' | 'usual' | 'big'>;
+/** The weekly target a pillar gets when its first habit is added: most days, not every day. */
+export const STARTING_TARGET = 4;
 
 const uuid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -40,7 +46,7 @@ export function useData(store: Store) {
   );
 
   const actions = {
-    async start(starters: { name: string; pillar: Pillar }[], targets: Record<Pillar, number>) {
+    async start(starters: NewHabit[], targets: Record<Pillar, number>) {
       const day = today();
       const habits: Habit[] = starters.map((s) => ({ id: uuid(), ...s, archived: false, createdAt: now() }));
       const rows: TargetRow[] = Object.entries(targets).map(([pillar, target]) => ({
@@ -58,10 +64,14 @@ export function useData(store: Store) {
       }
     },
 
-    logHabit(habit: Habit, day: string): Log {
-      const log: Log = { id: uuid(), habitId: habit.id, pillar: habit.pillar, day, createdAt: now() };
+    logHabit(habit: Habit, day: string, size: Size = 'usual'): Log {
+      const log: Log = { id: uuid(), habitId: habit.id, pillar: habit.pillar, day, createdAt: now(), size };
       save((d) => ({ ...d, logs: [...d.logs, log] }), () => store.addLog(log));
       return log;
+    },
+
+    setLogSize(id: string, size: Size) {
+      save((d) => ({ ...d, logs: d.logs.map((l) => (l.id === id ? { ...l, size } : l)) }), () => store.setLogSize(id, size));
     },
 
     removeLog(id: string) {
@@ -75,8 +85,10 @@ export function useData(store: Store) {
       );
     },
 
-    addHabit(name: string, pillar: Pillar) {
-      actions.saveHabit({ id: uuid(), name, pillar, archived: false, createdAt: now() });
+    /** Adds a habit. A pillar's first habit gives it a starting weekly target. */
+    addHabit(habit: NewHabit, current: AppData) {
+      actions.saveHabit({ id: uuid(), ...habit, archived: false, createdAt: now() });
+      if (targetFor(current.targets, habit.pillar, weekStart(today())) === 0) actions.setTarget(habit.pillar, STARTING_TARGET);
     },
 
     /** Places a decoration in a week's yard. */

@@ -11,12 +11,21 @@ export const PILLARS = [
 
 export type Pillar = (typeof PILLARS)[number];
 
+/** How big a logged habit was. Every size counts in full; Big earns a bonus seed. */
+export type Size = 'small' | 'usual' | 'big';
+export const SIZES: Size[] = ['small', 'usual', 'big'];
+
 export interface Habit {
   id: string;
   name: string;
   pillar: Pillar;
+  /** On the Someday shelf: kept with its history, but not shown on Today. */
   archived: boolean;
   createdAt: string;
+  /** What each size means, like "1 page" / "20 min" / "30 min". Small is asked for on new habits. */
+  small?: string;
+  usual?: string;
+  big?: string;
 }
 
 /** One logged habit. `day` is a local date, YYYY-MM-DD. */
@@ -26,6 +35,8 @@ export interface Log {
   pillar: Pillar;
   day: string;
   createdAt: string;
+  /** Missing on logs from before sizes existed, which count as usual. */
+  size?: Size;
 }
 
 /** A pillar's weekly target, in effect from `weekStart` until a later row replaces it. */

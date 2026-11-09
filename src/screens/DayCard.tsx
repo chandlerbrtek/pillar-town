@@ -5,7 +5,7 @@ import { IslandCanvas, type Transition } from '../iso/IslandCanvas';
 import { DAY_LAMP_ID, dayPillarId, renderDay } from '../iso/scenes';
 import type { Rendered } from '../iso/engine';
 import { PILLAR_INFO } from '../pillars';
-import { BALANCED_PILLARS, type DayBlock } from '../town';
+import type { DayBlock } from '../town';
 import { PILLARS } from '../types';
 
 /**
@@ -40,7 +40,7 @@ export function DayCard({ day, title, pinnable = false }: { day: DayBlock; title
   useEffect(() => {
     prev.current = { day, img };
   }, [img]);
-  const left = Math.max(0, BALANCED_PILLARS - day.pillarsTouched);
+  const left = Math.max(0, day.lampNeed - day.pillarsTouched);
 
   const sky = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(false);
@@ -150,7 +150,7 @@ function describe(day: DayBlock, id: number): string {
   if (id === DAY_LAMP_ID) {
     return day.balanced
       ? `Lamp lit: ${day.pillarsTouched} pillars touched. A balanced day.`
-      : `The lamp lights at ${BALANCED_PILLARS} pillars. ${day.pillarsTouched} so far.`;
+      : `The lamp lights at ${day.lampNeed} pillar${day.lampNeed > 1 ? 's' : ''}. ${day.pillarsTouched} so far.`;
   }
   const p = PILLARS[id - 1];
   const name = PILLAR_INFO[p].name;

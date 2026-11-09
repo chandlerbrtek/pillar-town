@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveTown, SEEDS, targetFor } from './town';
+import { deriveTown, lampNeed, SEEDS, targetFor } from './town';
 import type { AppData, Log, Pillar, YardItem } from './types';
 
 let n = 0;
@@ -91,15 +91,22 @@ describe('seeds', () => {
 });
 
 describe('streaks', () => {
-  it('counts days in a row and resets after a missed day', () => {
-    const logs = ['02', '03', '04', '06', '07'].map((d) => log('mind', `2026-11-${d}`));
-    expect(deriveTown(base(logs), '2026-11-07').streaks.mind).toBe(2);
+  it('survives one missed day and ends after two in a row', () => {
+    // Missed the 5th only: the streak bends but keeps going (5 days touched).
+    const bent = ['02', '03', '04', '06', '07'].map((d) => log('mind', `2026-11-${d}`));
+    expect(deriveTown(base(bent), '2026-11-07').streaks.mind).toBe(5);
+    // Missed the 5th and 6th: it ends, and the 7th starts a new one.
+    const broken = ['02', '03', '04', '07'].map((d) => log('mind', `2026-11-${d}`));
+    expect(deriveTown(base(broken), '2026-11-07').streaks.mind).toBe(1);
   });
 
-  it('keeps a streak alive until today ends', () => {
+  it('marks a streak bent after one missed day, until today is logged', () => {
     const logs = ['02', '03', '04'].map((d) => log('mind', `2026-11-${d}`));
-    expect(deriveTown(base(logs), '2026-11-05').streaks.mind).toBe(3);
-    expect(deriveTown(base(logs), '2026-11-06').streaks.mind).toBe(0);
+    const town = deriveTown(base(logs), '2026-11-06');
+    expect(town.streaks.mind).toBe(3);
+    expect(town.bent.mind).toBe(true);
+    expect(deriveTown(base(logs), '2026-11-05').bent.mind).toBe(false);
+    expect(deriveTown(base(logs), '2026-11-07').streaks.mind).toBe(0);
   });
 
   it('pays a bonus when a streak reaches 7 days', () => {
@@ -108,5 +115,28 @@ describe('streaks', () => {
     const town = deriveTown(base(logs), '2026-11-08');
     expect(town.streaks.heart).toBe(7);
     expect(town.seeds.earned).toBe(7 * 2 + SEEDS.streakMilestones[0][1]);
+  });
+});
+
+describe('habit sizes and the lamp', () => {
+  const habit = (id: string, pillar: Pillar) => ({ id, name: id, pillar, archived: false, createdAt: '2026-11-02T08:00:00' });
+
+  it('needs every pillar up to 3, then most of them, ending at 5 of 8', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(lampNeed)).toEqual([1, 2, 3, 3, 3, 4, 5, 5]);
+  });
+
+  it('lights the lamp when all of a 3-pillar day is done, at any size', () => {
+    const habits = [habit('a', 'mind'), habit('b', 'heart'), habit('c', 'bond')];
+    const logs = (['mind', 'heart', 'bond'] as Pillar[]).map((p) => ({ ...log(p, '2026-11-02'), size: 'small' as const }));
+    const day = deriveTown({ ...base(logs), habits }, '2026-11-02').weeks[0].days[0];
+    expect(day.lampNeed).toBe(3);
+    expect(day.balanced).toBe(true);
+  });
+
+  it('gives Big a bonus seed and counts targets in days', () => {
+    const logs = [log('mind', '2026-11-02'), { ...log('mind', '2026-11-02'), size: 'big' as const }];
+    const town = deriveTown(base(logs), '2026-11-02');
+    expect(town.weeks[0].progress.mind.count).toBe(1);
+    expect(town.seeds.earned).toBe(2 * SEEDS.perHabit + SEEDS.newBuilding + SEEDS.bigBonus);
   });
 });

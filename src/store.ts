@@ -1,4 +1,4 @@
-import { EMPTY_DATA, type AppData, type CapsulePull, type Habit, type Log, type TargetRow, type YardItem } from './types';
+import { EMPTY_DATA, type AppData, type CapsulePull, type Habit, type Log, type TargetRow, type YardItem, type Size } from './types';
 
 /** Where the app's data lives. Every write is already applied on screen before it is called. */
 export interface Store {
@@ -8,6 +8,7 @@ export interface Store {
   upsertHabits(habits: Habit[]): Promise<void>;
   addLog(log: Log): Promise<void>;
   deleteLog(id: string): Promise<void>;
+  setLogSize(id: string, size: Size): Promise<void>;
   upsertTargets(rows: TargetRow[]): Promise<void>;
   addYardItem(item: YardItem): Promise<void>;
   deleteYardItem(id: string): Promise<void>;
@@ -54,6 +55,10 @@ export class LocalStore implements Store {
 
   async deleteLog(id: string) {
     this.write((d) => ({ ...d, logs: d.logs.filter((l) => l.id !== id) }));
+  }
+
+  async setLogSize(id: string, size: Size) {
+    this.write((d) => ({ ...d, logs: d.logs.map((l) => (l.id === id ? { ...l, size } : l)) }));
   }
 
   async upsertTargets(rows: TargetRow[]) {
